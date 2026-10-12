@@ -31,6 +31,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _totpSecret = MutableStateFlow<String?>(null)
     val totpSecret: StateFlow<String?> = _totpSecret.asStateFlow()
 
+    private val _phoneNumber = MutableStateFlow<String>("")
+    val phoneNumber: StateFlow<String> = _phoneNumber.asStateFlow()
+
     init {
         checkAuthState()
     }
@@ -40,11 +43,18 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         val bio = prefs.getBoolean("biometric_enabled", false)
         val totp = prefs.getBoolean("totp_enabled", false)
         val secret = prefs.getString("totp_secret", null)
+        val phone = prefs.getString("user_phone", "") ?: ""
 
         _isConfigured.value = hasMpin
         _isBiometricEnabled.value = bio
         _isTotpEnabled.value = totp
         _totpSecret.value = secret
+        _phoneNumber.value = phone
+    }
+
+    fun setPhoneNumber(phone: String) {
+        _phoneNumber.value = phone
+        prefs.edit().putString("user_phone", phone).apply()
     }
 
     fun setupMpinAndBiometric(mpin: String, enableBiometric: Boolean): Boolean {

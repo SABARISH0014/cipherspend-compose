@@ -45,16 +45,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.example.cipherspend.ui.screens.AnalyticsScreen
 import com.example.cipherspend.ui.screens.DashboardScreen
 import com.example.cipherspend.ui.screens.SearchScreen
 import com.example.cipherspend.ui.screens.SettingsScreen
-import com.example.cipherspend.ui.screens.TransactionDetailScreen
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -77,11 +74,12 @@ sealed class TabItem(val route: String, val title: String, val icon: ImageVector
 fun MainAppScaffold(
     authViewModel: AuthViewModel,
     transactionViewModel: TransactionViewModel,
-    onLockVault: () -> Unit
+    onLockVault: () -> Unit,
+    onNavigateToManualEntry: () -> Unit = {},
+    onNavigateToDetail: (Long) -> Unit = {}
 ) {
     val navController = rememberNavController()
     var selectedTab by remember { mutableIntStateOf(0) }
-    var showManualEntryDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -160,7 +158,7 @@ fun MainAppScaffold(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(bounded = true, color = Color.White)
                                     ) {
-                                        showManualEntryDialog = true
+                                        onNavigateToManualEntry()
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -222,9 +220,7 @@ fun MainAppScaffold(
                     selectedTab = 0
                     DashboardScreen(
                         viewModel = transactionViewModel,
-                        onNavigateToDetail = { id ->
-                            navController.navigate("detail/$id")
-                        }
+                        onNavigateToDetail = onNavigateToDetail
                     )
                 }
                 composable(TabItem.Analytics.route) {
@@ -235,9 +231,7 @@ fun MainAppScaffold(
                     selectedTab = 2
                     SearchScreen(
                         viewModel = transactionViewModel,
-                        onNavigateToDetail = { id ->
-                            navController.navigate("detail/$id")
-                        }
+                        onNavigateToDetail = onNavigateToDetail
                     )
                 }
                 composable(TabItem.Settings.route) {
@@ -248,34 +242,8 @@ fun MainAppScaffold(
                         onLockVault = onLockVault
                     )
                 }
-                composable(
-                    route = "detail/{id}",
-                    arguments = listOf(navArgument("id") { type = NavType.LongType })
-                ) { backStackEntry ->
-                    val txId = backStackEntry.arguments?.getLong("id") ?: 0L
-                    TransactionDetailScreen(
-                        transactionId = txId,
-                        viewModel = transactionViewModel,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
             }
         }
-    }
-
-    if (showManualEntryDialog) {
-        ManualEntryDialog(
-            onDismiss = { showManualEntryDialog = false },
-            onSave = { amount, merchant, category, type ->
-                transactionViewModel.insertManualTransaction(
-                    amount = amount,
-                    merchant = merchant,
-                    category = category,
-                    type = type
-                )
-                showManualEntryDialog = false
-            }
-        )
     }
 }
 

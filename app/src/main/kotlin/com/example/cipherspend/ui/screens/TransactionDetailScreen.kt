@@ -52,6 +52,7 @@ import com.example.cipherspend.ui.components.getCategoryColor
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
+import com.example.cipherspend.ui.theme.PurpleGlow
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
@@ -65,7 +66,8 @@ import java.util.Locale
 fun TransactionDetailScreen(
     transactionId: Long,
     viewModel: TransactionViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToTraining: ((String, String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -353,6 +355,23 @@ fun TransactionDetailScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            if (onNavigateToTraining != null) {
+                Button(
+                    onClick = { onNavigateToTraining(currentTx.body, currentTx.sender) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PurpleGlow.copy(alpha = 0.25f),
+                        contentColor = PurpleGlow
+                    )
+                ) {
+                    Text("Open NER Match Editor", fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
 
             // Bottom Safe Exit
             Button(

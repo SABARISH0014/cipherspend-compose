@@ -21,9 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -42,7 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
 import com.example.cipherspend.ui.theme.CyberCyan
+import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.SurfaceDark
@@ -50,36 +51,67 @@ import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
 import com.example.cipherspend.ui.theme.glassEffect
+import com.example.cipherspend.ui.viewmodel.AuthViewModel
 
 @Composable
-fun SetupScreen(
-    onSetupComplete: (mpin: String, enableBiometric: Boolean) -> Unit
+fun MpinSetupScreen(
+    authViewModel: AuthViewModel,
+    onMpinConfigured: () -> Unit
 ) {
     var enteredPin by remember { mutableStateOf("") }
     var enableBiometric by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scrollState = rememberScrollState()
 
+    fun handleDigitPress(digit: String) {
+        when (digit) {
+            "CLEAR" -> enteredPin = ""
+            "DEL" -> {
+                if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
+                errorMessage = null
+            }
+            else -> {
+                if (enteredPin.length < 4) {
+                    val nextPin = enteredPin + digit
+                    enteredPin = nextPin
+                    errorMessage = null
+                    if (nextPin.length == 4) {
+                        val success = authViewModel.setupMpinAndBiometric(nextPin, enableBiometric)
+                        if (success) {
+                            onMpinConfigured()
+                        } else {
+                            errorMessage = "Failed to configure MPIN. Please try again."
+                            enteredPin = ""
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
-            .padding(horizontal = 20.dp)
     ) {
+        AmbientGlowBackdrop()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 36.dp)
+                modifier = Modifier.padding(top = 48.dp)
             ) {
+                // Security Icon Box
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(80.dp)
                         .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -87,14 +119,14 @@ fun SetupScreen(
                         imageVector = Icons.Default.Security,
                         contentDescription = "Security Shield",
                         tint = CyberCyan,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(40.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "CipherSpend Vault",
+                    text = "Setup Master MPIN",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold
@@ -104,7 +136,7 @@ fun SetupScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Set a 4-digit Master MPIN. Your financial data is encrypted locally with SQLCipher and never leaves this phone.",
+                    text = "Set a 4-digit Master MPIN. Your financial vault is encrypted locally and never leaves this phone.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextSecondary,
                         textAlign = TextAlign.Center,
@@ -113,7 +145,7 @@ fun SetupScreen(
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 // PIN Dots
                 Row(
@@ -124,7 +156,7 @@ fun SetupScreen(
                         val isFilled = i < enteredPin.length
                         Box(
                             modifier = Modifier
-                                .size(20.dp)
+                                .size(22.dp)
                                 .clip(CircleShape)
                                 .background(if (isFilled) CyberCyan else Color.White.copy(alpha = 0.1f))
                                 .border(
@@ -137,45 +169,49 @@ fun SetupScreen(
                 }
 
                 if (errorMessage != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                     Text(
                         text = errorMessage ?: "",
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFF5252))
+                        style = MaterialTheme.typography.bodySmall.copy(color = DangerRed)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
-                // Biometrics Option
+                // Biometrics Toggle Card
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassEffect(shape = RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .glassEffect(shape = RoundedCornerShape(18.dp))
+                        .padding(horizontal = 18.dp, vertical = 14.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Fingerprint,
                                 contentDescription = "Biometrics",
                                 tint = NeonEmerald,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(26.dp)
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(
                                     text = "Biometric Quick Unlock",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         color = TextPrimary,
-                                        fontSize = 14.sp
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 )
                                 Text(
-                                    text = "Unlock seamlessly via Fingerprint/Face",
+                                    text = "Unlock seamlessly via Fingerprint / Face",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = TextMuted,
                                         fontSize = 12.sp
@@ -203,7 +239,7 @@ fun SetupScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 val keypad = listOf(
@@ -222,22 +258,9 @@ fun SetupScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(54.dp)
+                                    .height(56.dp)
                                     .glassEffect(shape = RoundedCornerShape(14.dp))
-                                    .clickable {
-                                        when (digit) {
-                                            "CLEAR" -> enteredPin = ""
-                                            "DEL" -> if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
-                                            else -> {
-                                                if (enteredPin.length < 4) {
-                                                    enteredPin += digit
-                                                    if (enteredPin.length == 4) {
-                                                        onSetupComplete(enteredPin, enableBiometric)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
+                                    .clickable { handleDigitPress(digit) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (digit == "DEL") {
@@ -245,14 +268,14 @@ fun SetupScreen(
                                         imageVector = Icons.AutoMirrored.Filled.Backspace,
                                         contentDescription = "Delete",
                                         tint = TextSecondary,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 } else {
                                     Text(
                                         text = digit,
                                         style = MaterialTheme.typography.titleLarge.copy(
                                             color = if (digit == "CLEAR") TextSecondary else TextPrimary,
-                                            fontSize = if (digit == "CLEAR") 13.sp else 20.sp,
+                                            fontSize = if (digit == "CLEAR") 13.sp else 22.sp,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     )
