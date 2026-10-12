@@ -7,7 +7,7 @@ import java.util.regex.Pattern
 
 object SmsParser {
     private val AMOUNT_REGEX = Pattern.compile(
-        """(?:rs\.?|inr|₹|amount|debited by|refund of|txn of)\s*[:\-\s]*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)""",
+        """(?:rs\.?|inr|₹|amount|debited(?: for| by| with)?|spent|spent of|refund of|txn of|credited(?: for| with)?)\s*[:\-\s]*(?:rs\.?|inr|₹)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -17,7 +17,7 @@ object SmsParser {
     )
 
     private val MERCHANT_REGEX = Pattern.compile(
-        """(?:paid to|sent to|transfer to|purchase at|txn at|to vpa|for|from|in|to)\s+([a-zA-Z0-9\s\.@\-_]+)""",
+        """(?:paid to|sent to|transfer to|trf to|transfer from|purchase at|txn at|to vpa|for|from|in|to)\s+([a-zA-Z0-9\s\.@\-_]+)""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -140,7 +140,7 @@ object SmsParser {
         val matcher = MERCHANT_REGEX.matcher(body)
         if (matcher.find()) {
             var name = matcher.group(1)?.trim() ?: ""
-            name = name.split("\\s+(?:on|at|from|via|successful|ref|txn)(?:\\s+|$)".toRegex(RegexOption.IGNORE_CASE))[0]
+            name = name.split("\\s+(?:on|at|from|via|successful|ref|refno|txn)(?:\\s+|$)".toRegex(RegexOption.IGNORE_CASE))[0]
             name = name.replace("[.\\-_]+$".toRegex(), "").trim()
             if (name.isNotEmpty()) return name
         }

@@ -25,6 +25,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getTransactionById(id: Long): TransactionEntity?
 
+    @Query("SELECT COUNT(*) FROM transactions")
+    suspend fun getTransactionCount(): Int
+
     @Query("SELECT * FROM transactions WHERE hash = :hash LIMIT 1")
     suspend fun getTransactionByHash(hash: String): TransactionEntity?
 

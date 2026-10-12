@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.cipherspend.service.SmsSyncManager
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,6 +76,9 @@ fun DashboardScreen(
     val transactions by viewModel.transactions.collectAsState()
     val forecast by viewModel.forecast.collectAsState()
 
+    val coroutineScope = rememberCoroutineScope()
+    val syncProgress by SmsSyncManager.syncState
+
     var hasSmsPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
@@ -87,54 +93,25 @@ fun DashboardScreen(
         )
     }
 
+    // Auto-sync whenever permission is granted
+    androidx.compose.runtime.LaunchedEffect(hasSmsPermission) {
+        if (hasSmsPermission) {
+            SmsSyncManager.syncInbox(context)
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
-        hasSmsPermission = perms[Manifest.permission.RECEIVE_SMS] == true &&
+        val granted = perms[Manifest.permission.RECEIVE_SMS] == true &&
                 perms[Manifest.permission.READ_SMS] == true
+        hasSmsPermission = granted
+        if (granted) {
+            coroutineScope.launch {
+                SmsSyncManager.syncInbox(context)
+            }
+        }
     }
-
-    // Generic demo data for initial zero-state (HCI Requirement)
-    val demoTransactions = remember {
-        listOf(
-            TransactionEntity(
-                id = 991,
-                hash = "demo_1",
-                sender = "HDFC-BANK",
-                body = "Paid to Starbucks ₹350.00 via UPI",
-                amount = 350.0,
-                category = "Food & Dining",
-                type = "UPI",
-                merchant = "Starbucks Coffee",
-                timestamp = System.currentTimeMillis() - 3600000
-            ),
-            TransactionEntity(
-                id = 992,
-                hash = "demo_2",
-                sender = "ICICI-ALERT",
-                body = "Txn of ₹2,199.00 at Zara Mumbai",
-                amount = 2199.0,
-                category = "Shopping",
-                type = "Card",
-                merchant = "Zara Retail",
-                timestamp = System.currentTimeMillis() - 7200000
-            ),
-            TransactionEntity(
-                id = 993,
-                hash = "demo_3",
-                sender = "UBER-INDIA",
-                body = "Paid to Uber India ₹420.00 via GPay",
-                amount = 420.0,
-                category = "Travel",
-                type = "UPI",
-                merchant = "Uber Technologies",
-                timestamp = System.currentTimeMillis() - 14400000
-            )
-        )
-    }
-
-    val displayTransactions = if (transactions.isEmpty()) demoTransactions else transactions
-    val isDemoMode = transactions.isEmpty()
 
     LazyColumn(
         modifier = Modifier
@@ -180,9 +157,9 @@ fun DashboardScreen(
 
         // Budget Summary Card
         item {
-            val totalSpent = forecast?.spent ?: (if (isDemoMode) 2969.0 else 0.0)
+            val totalSpent = forecast?.spent ?: 0.0
             val budget = forecast?.budget ?: 25000.0
-            val progress = forecast?.progress ?: ((totalSpent / budget).toFloat())
+            val progress = forecast?.progress ?: (if (budget > 0) (totalSpent / budget).toFloat().coerceIn(0f, 1f) else 0f)
 
             Box(
                 modifier = Modifier
@@ -317,6 +294,10 @@ fun DashboardScreen(
                                             }
                                         )
                                     } catch (_: Exception) {}
+                                } else {
+                                    coroutineScope.launch {
+                                        SmsSyncManager.syncInbox(context, fullRescan = true)
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().height(44.dp),
@@ -324,7 +305,12 @@ fun DashboardScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                         ) {
                             Text(
-                                text = if (!hasSmsPermission) "Enable Auto-Tracking (SMS)" else "Grant Notification Listener",
+                                text = when {
+                                    !hasSmsPermission -> "Enable Auto-Tracking (SMS)"
+                                    !hasNotifListener -> "Grant Notification Listener"
+                                    syncProgress.isSyncing -> "Scanning Messages..."
+                                    else -> "Sync SMS Inbox Now"
+                                },
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     color = Color.Black,
                                     fontWeight = FontWeight.Bold,
@@ -337,27 +323,40 @@ fun DashboardScreen(
             }
         }
 
-        // Demo Mode indicator banner
-        if (isDemoMode) {
+        // Live SMS Sync Indicator Banner
+        if (syncProgress.isSyncing) {
             item {
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassEffect(shape = RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .glassEffect(shape = RoundedCornerShape(14.dp))
+                        .padding(14.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Demo preview",
-                        tint = NeonEmerald,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Demo Preview Mode: Tap any card to view details or add entries using the '+' button.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 12.sp)
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Syncing Banking SMS...",
+                                style = MaterialTheme.typography.titleSmall.copy(color = CyberCyan, fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "${syncProgress.totalScanned} scanned",
+                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                            )
+                        }
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(4.dp),
+                            color = CyberCyan,
+                            trackColor = Color.White.copy(alpha = 0.1f)
+                        )
+                        Text(
+                            text = "Extracted ${syncProgress.transactionsFound} financial records into encrypted vault",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontSize = 11.sp)
+                        )
+                    }
                 }
             }
         }
@@ -373,11 +372,47 @@ fun DashboardScreen(
             )
         }
 
-        items(displayTransactions, key = { it.id }) { tx ->
-            TransactionRowItem(
-                transaction = tx,
-                onClick = { onNavigateToDetail(tx.id) }
-            )
+        if (transactions.isEmpty() && !syncProgress.isSyncing) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassEffect(shape = RoundedCornerShape(18.dp))
+                        .padding(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Sensors,
+                            contentDescription = null,
+                            tint = CyberCyan,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Text(
+                            text = "No Transactions Found",
+                            style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = if (!hasSmsPermission)
+                                "Tap 'Enable Auto-Tracking' above to automatically parse bank SMS messages, or tap '+' to add manually."
+                            else
+                                "No bank debit/UPI messages detected in your inbox. Tap 'Sync SMS Inbox Now' or use '+' to record manually.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+        } else {
+            items(transactions, key = { it.id }) { tx ->
+                TransactionRowItem(
+                    transaction = tx,
+                    onClick = { onNavigateToDetail(tx.id) }
+                )
+            }
         }
 
         // Generous bottom clearance to prevent bottom bar overlap

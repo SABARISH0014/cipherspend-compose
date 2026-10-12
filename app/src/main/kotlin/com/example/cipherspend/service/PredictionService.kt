@@ -46,27 +46,43 @@ class PredictionService private constructor(private val context: Context) {
             val options = Interpreter.Options()
             interpreter = Interpreter(modelBuffer, options)
 
-            // Dynamic input shape detection
+            // Dynamic input & output shape detection
             val inputShape = interpreter?.getInputTensor(0)?.shape()
             if (inputShape != null && inputShape.size > 1) {
                 sequenceLength = inputShape[1]
             }
+            val outputShape = interpreter?.getOutputTensor(0)?.shape()
+            val numClasses = if (outputShape != null && outputShape.size > 1) outputShape[1] else 11
 
             // Load Vocab JSON
             val vocabString = context.assets.open("vocab.json").bufferedReader().use { it.readText() }
             val mapType = object : TypeToken<Map<String, Int>>() {}.type
             vocab = Gson().fromJson(vocabString, mapType)
 
-            // Load Labels JSON
+            // Load Labels JSON (1-based in labels.json, index 0 is baseline/Others)
             val labelsString = context.assets.open("labels.json").bufferedReader().use { it.readText() }
             val labelMapType = object : TypeToken<Map<String, String>>() {}.type
             val labelMap: Map<String, String> = Gson().fromJson(labelsString, labelMapType)
-            val sortedList = mutableListOf<String>()
-            for (i in 0 until labelMap.size) {
-                sortedList.add(labelMap[i.toString()] ?: "Others")
+            val sortedList = ArrayList<String>(numClasses)
+            for (i in 0 until numClasses) {
+                val rawLabel = labelMap[i.toString()] ?: if (i == 0) "Others" else "Uncategorized"
+                val formattedLabel = when (rawLabel.lowercase()) {
+                    "food" -> "Food & Dining"
+                    "shopping" -> "Shopping"
+                    "bills" -> "Bills & Utilities"
+                    "travel" -> "Travel"
+                    "investment" -> "Investment"
+                    "transaction" -> "Transaction"
+                    "refund" -> "Refund"
+                    "cash" -> "Cash"
+                    "spam" -> "Spam"
+                    "ignore" -> "Ignore"
+                    else -> "Others"
+                }
+                sortedList.add(formattedLabel)
             }
             labels = sortedList
-            Log.d("PredictionService", "TFLite Model loaded successfully. Input length: $sequenceLength, Classes: ${labels.size}")
+            Log.d("PredictionService", "TFLite Model loaded successfully. Input length: $sequenceLength, Classes: ${labels.size} -> $labels")
         } catch (e: Exception) {
             Log.e("PredictionService", "Failed to initialize TFLite model: ${e.message}", e)
         }
@@ -101,8 +117,14 @@ class PredictionService private constructor(private val context: Context) {
                 }
             }
 
-            val result = if (bestIdx in labels.indices) labels[bestIdx] else fallbackCategorize(text)
-            Log.d("PredictionService", "Predicted: $result with confidence: $maxProb")
+            val predicted = if (bestIdx in labels.indices) labels[bestIdx] else "Others"
+            val result = if (predicted == "Others" || maxProb < 0.20f) {
+                val fallback = fallbackCategorize(text)
+                if (fallback != "Others") fallback else predicted
+            } else {
+                predicted
+            }
+            Log.d("PredictionService", "Predicted: $result (raw: $predicted, conf: $maxProb)")
             return result
         } catch (e: Exception) {
             Log.e("PredictionService", "Error during inference: ${e.message}")
@@ -145,11 +167,12 @@ class PredictionService private constructor(private val context: Context) {
         val words = clean.split("\\s+".toRegex()).filter { it.isNotBlank() }
         val sequence = FloatArray(targetLength) { 0.0f }
         val oovToken = vocab["<OOV>"]?.toFloat() ?: 1.0f
+        val maxVocabSize = 6000f
 
         for (i in 0 until minOf(targetLength, words.size)) {
             val word = words[i]
             val token = vocab[word]?.toFloat() ?: oovToken
-            sequence[i] = token
+            sequence[i] = if (token >= 0f && token < maxVocabSize) token else oovToken
         }
         return sequence
     }

@@ -46,18 +46,9 @@ fun AnalyticsScreen(
     val allTransactions by viewModel.allTransactions.collectAsState()
 
     val categorySpends = remember(allTransactions) {
-        if (allTransactions.isEmpty()) {
-            listOf(
-                CategorySpend("Food & Dining", 4200.0),
-                CategorySpend("Shopping", 2800.0),
-                CategorySpend("Bills & Utilities", 1950.0),
-                CategorySpend("Travel", 1200.0)
-            )
-        } else {
-            allTransactions.groupBy { it.category }
-                .map { (cat, list) -> CategorySpend(cat, list.sumOf { it.amount }) }
-                .sortedByDescending { it.total }
-        }
+        allTransactions.groupBy { it.category }
+            .map { (cat, list) -> CategorySpend(cat, list.sumOf { it.amount }) }
+            .sortedByDescending { it.total }
     }
 
     val totalSpent = remember(categorySpends) {
@@ -132,16 +123,39 @@ fun AnalyticsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(230.dp)
-                    ) {
-                        SankeyChart(
-                            budget = budget,
-                            totalSpent = totalSpent,
-                            categories = categorySpends
-                        )
+                    if (categorySpends.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "No Outflow Data Yet",
+                                    style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                                )
+                                Text(
+                                    text = "Enable SMS tracking or add transactions to visualize your cashflow.",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                )
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(230.dp)
+                        ) {
+                            SankeyChart(
+                                budget = budget,
+                                totalSpent = totalSpent,
+                                categories = categorySpends
+                            )
+                        }
                     }
                 }
             }
@@ -199,18 +213,19 @@ fun AnalyticsScreen(
             }
         }
 
-        item {
-            Text(
-                text = "Category Breakdown",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    color = TextPrimary,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+        if (categorySpends.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Category Breakdown",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
-        items(categorySpends.size) { index ->
+            items(categorySpends.size) { index ->
             val cat = categorySpends[index]
             val catColor = getCategoryColor(cat.category)
             val percent = if (totalSpent > 0) (cat.total / totalSpent * 100).toInt() else 0
@@ -263,6 +278,7 @@ fun AnalyticsScreen(
                 }
             }
         }
+    }
 
         // Bottom clearance
         item {

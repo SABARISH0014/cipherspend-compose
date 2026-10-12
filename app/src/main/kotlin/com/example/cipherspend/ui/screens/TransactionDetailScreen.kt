@@ -80,24 +80,33 @@ fun TransactionDetailScreen(
         if (found != null) {
             transaction = found
             editedMerchantName = found.merchant
-        } else {
-            // Check demo transactions fallback
-            transaction = TransactionEntity(
-                id = transactionId,
-                hash = "demo_$transactionId",
-                sender = "HDFC-BANK",
-                body = "Paid to Starbucks ₹350.00 via UPI ref 10928374",
-                amount = 350.0,
-                category = "Food & Dining",
-                type = "UPI",
-                merchant = "Starbucks Coffee",
-                timestamp = System.currentTimeMillis()
-            )
-            editedMerchantName = "Starbucks Coffee"
         }
     }
 
-    val currentTx = transaction ?: return
+    val currentTx = transaction
+    if (currentTx == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Transaction Record Not Found", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Button(
+                    onClick = { onNavigateBack() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
+                ) {
+                    Text("Go Back", color = Color.Black)
+                }
+            }
+        }
+        return
+    }
+
     val catColor = getCategoryColor(currentTx.category)
     val dateFormat = remember { SimpleDateFormat("dd MMMM yyyy, hh:mm:ss a", Locale.getDefault()) }
     val formattedDate = remember(currentTx.timestamp) { dateFormat.format(Date(currentTx.timestamp)) }
