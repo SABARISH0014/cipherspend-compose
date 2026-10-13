@@ -40,6 +40,9 @@ interface TransactionDao {
     @Update
     suspend fun update(transaction: TransactionEntity)
 
+    @Query("UPDATE transactions SET merchant = :merchant WHERE body = :body AND sender = :sender")
+    suspend fun updateMerchantByBodyAndSender(body: String, sender: String, merchant: String): Int
+
     @Delete
     suspend fun delete(transaction: TransactionEntity)
 

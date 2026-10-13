@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,11 +34,13 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -74,7 +77,8 @@ fun DashboardScreen(
     viewModel: TransactionViewModel,
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToNotifications: () -> Unit = {},
-    onNavigateToProfileEdit: () -> Unit = {}
+    onNavigateToProfileEdit: () -> Unit = {},
+    onNavigateToManualEntry: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val transactions by viewModel.transactions.collectAsState()
@@ -100,6 +104,34 @@ fun DashboardScreen(
             Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
                 ?.contains(context.packageName) == true
         )
+    }
+
+    var detectedUpiApp by remember { mutableStateOf<String?>(null) }
+    var showPrivacyDisclosure by remember { mutableStateOf(false) }
+    var pendingPermissionAction by remember { mutableStateOf<String?>(null) }
+
+    // Check for recent UPI app on composition and resume
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val detected = com.example.cipherspend.MainActivity.checkRecentUpiApp(context)
+                if (detected != null) {
+                    detectedUpiApp = detected
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val detected = com.example.cipherspend.MainActivity.checkRecentUpiApp(context)
+        if (detected != null) {
+            detectedUpiApp = detected
+        }
     }
 
     // Auto-sync whenever permission is granted
@@ -324,20 +356,11 @@ fun DashboardScreen(
                         Button(
                             onClick = {
                                 if (!hasSmsPermission) {
-                                    permissionLauncher.launch(
-                                        arrayOf(
-                                            Manifest.permission.RECEIVE_SMS,
-                                            Manifest.permission.READ_SMS
-                                        )
-                                    )
+                                    pendingPermissionAction = "SMS"
+                                    showPrivacyDisclosure = true
                                 } else if (!hasNotifListener) {
-                                    try {
-                                        context.startActivity(
-                                            Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
-                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            }
-                                        )
-                                    } catch (_: Exception) {}
+                                    pendingPermissionAction = "NOTIF"
+                                    showPrivacyDisclosure = true
                                 } else {
                                     coroutineScope.launch {
                                         SmsSyncManager.syncInbox(context, fullRescan = true)
@@ -463,6 +486,183 @@ fun DashboardScreen(
         item {
             Spacer(modifier = Modifier.height(110.dp))
         }
+    }
+
+    // Smart Prompt AlertDialog (Task 1)
+    if (detectedUpiApp != null) {
+        AlertDialog(
+            onDismissRequest = {
+                prefs.edit().putLong("last_smart_prompt_time", System.currentTimeMillis()).apply()
+                detectedUpiApp = null
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Sensors,
+                        contentDescription = null,
+                        tint = CyberCyan,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Smart Prompt",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "We noticed you recently opened $detectedUpiApp. Would you like to log an expense?",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = TextSecondary,
+                        lineHeight = 20.sp
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        prefs.edit().putLong("last_smart_prompt_time", System.currentTimeMillis()).apply()
+                        detectedUpiApp = null
+                        onNavigateToManualEntry()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "Log Expense",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        prefs.edit().putLong("last_smart_prompt_time", System.currentTimeMillis()).apply()
+                        detectedUpiApp = null
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, TextMuted)
+                ) {
+                    Text(
+                        text = "Dismiss",
+                        color = TextSecondary
+                    )
+                }
+            },
+            containerColor = Color(0xFF131B2A),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+        )
+    }
+
+    // Google Play Prominent Disclosure Dialog (Task 5)
+    if (showPrivacyDisclosure) {
+        AlertDialog(
+            onDismissRequest = {
+                showPrivacyDisclosure = false
+                pendingPermissionAction = null
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = NeonEmerald,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Privacy & Permission Disclosure",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "CipherSpend accesses your incoming and historical bank SMS messages and UPI payment notifications solely to automatically log your expenses and categorize transactions.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = TextPrimary,
+                            lineHeight = 20.sp
+                        )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF0F1E33))
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = "100% Offline Guarantee: All parsing and AI inference happen locally on your device. Your SMS and notification data is encrypted with SQLCipher and is never uploaded, shared, or transmitted to any server.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = CyberCyan,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val action = pendingPermissionAction
+                        showPrivacyDisclosure = false
+                        pendingPermissionAction = null
+                        if (action == "SMS") {
+                            permissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.RECEIVE_SMS,
+                                    Manifest.permission.READ_SMS
+                                )
+                            )
+                        } else if (action == "NOTIF") {
+                            try {
+                                context.startActivity(
+                                    Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                )
+                            } catch (_: Exception) {}
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "I Understand & Agree",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showPrivacyDisclosure = false
+                        pendingPermissionAction = null
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, TextMuted)
+                ) {
+                    Text(
+                        text = "Decline",
+                        color = TextSecondary
+                    )
+                }
+            },
+            containerColor = Color(0xFF131B2A),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+        )
     }
 }
 

@@ -225,7 +225,8 @@ fun MainAppScaffold(
                         viewModel = transactionViewModel,
                         onNavigateToDetail = onNavigateToDetail,
                         onNavigateToNotifications = onNavigateToNotifications,
-                        onNavigateToProfileEdit = onNavigateToProfileEdit
+                        onNavigateToProfileEdit = onNavigateToProfileEdit,
+                        onNavigateToManualEntry = onNavigateToManualEntry
                     )
                 }
                 composable(TabItem.Analytics.route) {

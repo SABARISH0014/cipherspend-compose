@@ -81,18 +81,35 @@ object SmsParser {
 
         // Check custom rules first
         var customMerchant: String? = null
+        var customAmount: Double? = null
         for (rule in customRules) {
             try {
                 val rulePattern = Pattern.compile(rule.regexPattern, Pattern.CASE_INSENSITIVE)
                 val matcher = rulePattern.matcher(cleanBody)
                 if (matcher.find()) {
-                    customMerchant = rule.merchantName
+                    val matchedMerchant = try {
+                        matcher.group("merchant")?.trim()
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                    customMerchant = if (!matchedMerchant.isNullOrBlank()) {
+                        matchedMerchant
+                    } else {
+                        rule.merchantName
+                    }
+
+                    val matchedAmountStr = try {
+                        matcher.group("amount")?.replace(",", "")?.trim()
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                    customAmount = matchedAmountStr?.toDoubleOrNull()
                     break
                 }
             } catch (_: Exception) {}
         }
 
-        val amount = extractAmount(cleanBody, isNotification)
+        val amount = customAmount ?: extractAmount(cleanBody, isNotification)
         if (amount <= 0.0) return null
 
         val merchant = customMerchant ?: extractMerchant(cleanBody)

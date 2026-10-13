@@ -56,6 +56,38 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun setPhoneNumber(phone: String) {
         _phoneNumber.value = phone
         prefs.edit().putString("user_phone", phone).apply()
+
+        val appContext = getApplication<Application>().applicationContext
+        val generalPrefs = appContext.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
+
+        var matchedSubId = -1
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            appContext,
+            android.Manifest.permission.READ_PHONE_STATE
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            try {
+                val subManager = appContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? android.telephony.SubscriptionManager
+                val subList = subManager?.activeSubscriptionInfoList
+                val cleanInput = phone.filter { it.isDigit() }.takeLast(10)
+
+                if (!subList.isNullOrEmpty() && cleanInput.isNotEmpty()) {
+                    for (info in subList) {
+                        @Suppress("DEPRECATION")
+                        val simNumber = info.number?.filter { it.isDigit() }?.takeLast(10)
+                        if (simNumber != null && simNumber == cleanInput) {
+                            matchedSubId = info.subscriptionId
+                            break
+                        }
+                    }
+                }
+            } catch (_: SecurityException) {
+                matchedSubId = -1
+            }
+        }
+
+        generalPrefs.edit().putInt("verified_sub_id", matchedSubId).apply()
     }
 
     fun setupMpinAndBiometric(mpin: String, enableBiometric: Boolean): Boolean {

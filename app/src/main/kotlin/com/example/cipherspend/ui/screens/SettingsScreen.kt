@@ -3,12 +3,16 @@ package com.example.cipherspend.ui.screens
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,6 +115,24 @@ fun SettingsScreen(
     }
     var advancedSettingsEnabled by remember {
         mutableStateOf(prefs.getBoolean("advanced_settings", false))
+    }
+
+    val powerManager = remember { context.getSystemService(Context.POWER_SERVICE) as? PowerManager }
+    var isIgnoringBattery by remember {
+        mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     fun hasUsageStatsPermission(): Boolean {
@@ -463,6 +485,71 @@ fun SettingsScreen(
                                 uncheckedTrackColor = SurfaceDark
                             )
                         )
+                    }
+
+                    // 4. Unrestricted Battery (OEM Reliability)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                try {
+                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    try {
+                                        val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                        context.startActivity(fallbackIntent)
+                                    } catch (_: Exception) {
+                                        Toast.makeText(context, "Could not open battery settings", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BatteryChargingFull,
+                                contentDescription = "Unrestricted Battery",
+                                tint = if (isIgnoringBattery) NeonEmerald else CyberCyan,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Unrestricted Battery (OEM Reliability)",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontSize = 15.sp
+                                    )
+                                )
+                                Text(
+                                    text = if (isIgnoringBattery) "Unrestricted (Background parsing protected)" else "Optimized (Tap to protect against OEM background kill)",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = if (isIgnoringBattery) NeonEmerald else TextMuted
+                                    )
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isIgnoringBattery) NeonEmerald.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.08f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isIgnoringBattery) "Active" else "Optimize",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isIgnoringBattery) NeonEmerald else TextSecondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
                     }
                 }
             }

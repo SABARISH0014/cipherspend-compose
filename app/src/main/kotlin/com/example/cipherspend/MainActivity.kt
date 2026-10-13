@@ -1,11 +1,16 @@
 package com.example.cipherspend
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavType
@@ -33,13 +38,35 @@ class MainActivity : FragmentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
     private val transactionViewModel: TransactionViewModel by viewModels()
+    private var backgroundTimestamp: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
 
         setContent {
             CipherSpendTheme {
                 val navController = rememberNavController()
+
+                val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
+                val isConfigured by authViewModel.isConfigured.collectAsState()
+
+                LaunchedEffect(isAuthenticated, isConfigured) {
+                    if (isConfigured && !isAuthenticated) {
+                        val currentRoute = navController.currentBackStackEntry?.destination?.route
+                        if (currentRoute != null && currentRoute != "startup" && currentRoute != "unlock" &&
+                            currentRoute != "verification" && currentRoute != "verify_setup" &&
+                            currentRoute != "mpin_setup" && currentRoute != "profile_setup"
+                        ) {
+                            navController.navigate("unlock") {
+                                popUpTo(0) { inclusive = false }
+                            }
+                        }
+                    }
+                }
 
                 NavHost(
                     navController = navController,
@@ -276,4 +303,75 @@ class MainActivity : FragmentActivity() {
 
         biometricPrompt.authenticate(promptInfo)
     }
+
+    override fun onStop() {
+        super.onStop()
+        backgroundTimestamp = System.currentTimeMillis()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (backgroundTimestamp > 0L) {
+            val elapsed = System.currentTimeMillis() - backgroundTimestamp
+            if (elapsed > 60_000L && authViewModel.isConfigured.value && authViewModel.isAuthenticated.value) {
+                authViewModel.lockVault()
+            }
+        }
+    }
+
+    companion object {
+        fun checkRecentUpiApp(context: Context): String? {
+            val prefs = context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
+            val isEnabled = prefs.getBoolean("smart_prompt_enabled", false)
+            if (!isEnabled) return null
+
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? android.app.AppOpsManager ?: return null
+            val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    context.packageName
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    context.packageName
+                )
+            }
+            if (mode != android.app.AppOpsManager.MODE_ALLOWED) return null
+
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager ?: return null
+            val now = System.currentTimeMillis()
+            val fiveMinAgo = now - 5 * 60 * 1000L
+
+            val stats = usageStatsManager.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                fiveMinAgo,
+                now
+            ) ?: return null
+
+            val upiApps = mapOf(
+                "com.google.android.apps.nbu.paisa.user" to "GPay",
+                "com.phonepe.app" to "PhonePe",
+                "net.one97.paytm" to "Paytm",
+                "in.org.npci.upiapp" to "BHIM",
+                "com.dreamplug.androidapp" to "Cred"
+            )
+
+            val lastPromptTime = prefs.getLong("last_smart_prompt_time", 0L)
+
+            val matchingStats = stats.filter { stat ->
+                upiApps.containsKey(stat.packageName) &&
+                stat.lastTimeUsed >= fiveMinAgo &&
+                stat.lastTimeUsed > lastPromptTime
+            }
+
+            val mostRecent = matchingStats.maxByOrNull { it.lastTimeUsed } ?: return null
+            return upiApps[mostRecent.packageName]
+        }
+    }
 }
+
+fun checkRecentUpiApp(context: Context): String? = MainActivity.checkRecentUpiApp(context)

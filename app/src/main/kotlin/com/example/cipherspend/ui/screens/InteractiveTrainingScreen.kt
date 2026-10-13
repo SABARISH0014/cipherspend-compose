@@ -102,36 +102,63 @@ fun InteractiveTrainingScreen(
 
     val selectedCount = selectedIndices.count { it.value }
 
+    fun buildTokenRegex(words: List<String>, labeledWords: Map<Int, NerLabelType>): String {
+        val tokens = mutableListOf<String>()
+        var i = 0
+        while (i < words.size) {
+            val label = labeledWords[i]
+            when (label) {
+                NerLabelType.AMOUNT -> {
+                    tokens.add("""(?<amount>[0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?)""")
+                    i++
+                }
+                NerLabelType.MERCHANT -> {
+                    var j = i
+                    while (j + 1 < words.size && labeledWords[j + 1] == NerLabelType.MERCHANT) {
+                        j++
+                    }
+                    if (j == words.size - 1) {
+                        tokens.add("""(?<merchant>.+)""")
+                    } else {
+                        tokens.add("""(?<merchant>.+?)""")
+                    }
+                    i = j + 1
+                }
+                else -> {
+                    tokens.add(Pattern.quote(words[i]))
+                    i++
+                }
+            }
+        }
+        return tokens.joinToString("""\s+""")
+    }
+
     fun applyLabel(label: NerLabelType) {
         selectedIndices.filter { it.value }.keys.forEach { index ->
             labeledWords[index] = label
         }
         selectedIndices.clear()
 
-        // Synthesize dynamic regex from labeled words
+        // Extract merchant name from labeled merchant tokens
         val merchantTokens = labeledWords
             .filter { it.value == NerLabelType.MERCHANT }
             .toSortedMap()
             .map { words[it.key] }
 
-        val amountTokens = labeledWords
-            .filter { it.value == NerLabelType.AMOUNT }
-            .toSortedMap()
-            .map { words[it.key] }
-
         if (merchantTokens.isNotEmpty()) {
             detectedMerchant = merchantTokens.joinToString(" ")
-            val quotedMerchant = Pattern.quote(detectedMerchant)
-            generatedRegex = ".*(?i)($quotedMerchant).*"
-        } else if (amountTokens.isNotEmpty()) {
-            val quotedAmt = Pattern.quote(amountTokens.joinToString(" "))
-            generatedRegex = ".*(?i)($quotedAmt).*"
+        }
+
+        // Build token-by-token regex
+        if (labeledWords.any { it.value == NerLabelType.MERCHANT || it.value == NerLabelType.AMOUNT }) {
+            generatedRegex = buildTokenRegex(words, labeledWords)
         }
     }
 
     fun saveRule() {
-        val regex = generatedRegex ?: run {
-            // Default rule if user didn't label yet but wants to save selection
+        val regex = generatedRegex ?: if (labeledWords.any { it.value == NerLabelType.MERCHANT || it.value == NerLabelType.AMOUNT }) {
+            buildTokenRegex(words, labeledWords)
+        } else {
             val merchantTokens = labeledWords
                 .filter { it.value == NerLabelType.MERCHANT }
                 .toSortedMap()
@@ -154,6 +181,15 @@ fun InteractiveTrainingScreen(
                 merchantName = merchantName
             )
             db.customRuleDao().insertRule(rule)
+
+            // Update any existing transaction with exact same body and sender with newly extracted detectedMerchant
+            if (detectedMerchant.isNotBlank()) {
+                db.transactionDao().updateMerchantByBodyAndSender(
+                    body = rawBody,
+                    sender = sender,
+                    merchant = detectedMerchant
+                )
+            }
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Regex rule saved successfully", Toast.LENGTH_SHORT).show()
