@@ -8,6 +8,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.cipherspend.MainActivity
+import com.example.cipherspend.data.db.DatabaseProvider
+import com.example.cipherspend.data.model.AppNotificationEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 object AlertNotificationManager {
@@ -31,6 +36,7 @@ object AlertNotificationManager {
     }
 
     fun sendSpendingAlert(context: Context, percent: Int, spent: Double, budget: Double) {
+        val severity = if (percent >= 100) "CRITICAL" else "WARNING"
         val title = if (percent >= 100) {
             "Budget Alert: 100% Limit Reached!"
         } else {
@@ -43,6 +49,21 @@ object AlertNotificationManager {
             spent,
             budget
         )
+
+        // Persist alert in encrypted database for historical insights
+        val alertEntity = AppNotificationEntity(
+            title = title,
+            body = content,
+            timestamp = System.currentTimeMillis(),
+            severity = severity
+        )
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                DatabaseProvider.getDatabase(context).appNotificationDao().insertNotification(alertEntity)
+            } catch (e: Exception) {
+                // Ignore if db is locked or undergoing reset
+            }
+        }
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

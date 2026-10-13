@@ -70,7 +70,8 @@ import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 fun SettingsScreen(
     authViewModel: AuthViewModel,
     transactionViewModel: TransactionViewModel,
-    onLockVault: () -> Unit
+    onLockVault: () -> Unit,
+    onNuclearWipeComplete: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -357,9 +358,9 @@ fun SettingsScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = DangerRed.copy(alpha = 0.15f))
                     ) {
-                        Icon(imageVector = Icons.Default.DeleteForever, contentDescription = "Purge", tint = DangerRed)
+                        Icon(imageVector = Icons.Default.DeleteForever, contentDescription = "Kill Switch", tint = DangerRed)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Purge All Encrypted Data", color = DangerRed, fontWeight = FontWeight.SemiBold)
+                        Text("Factory Reset (Kill Switch)", color = DangerRed, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -497,27 +498,28 @@ fun SettingsScreen(
         )
     }
 
-    // Purge Confirmation Dialog
+    // Kill Switch Confirmation Dialog
     if (showPurgeDialog) {
         AlertDialog(
             onDismissRequest = { showPurgeDialog = false },
-            title = { Text("Wipe All Transactions?", color = DangerRed) },
+            title = { Text("Factory Reset Vault?", color = DangerRed) },
             text = {
                 Text(
-                    text = "This will permanently delete all encrypted transactions and rules from your local SQLCipher database. This action cannot be undone.",
+                    text = "This will permanently destroy the encrypted database (cipherspend_encrypted.db), wipe encryption keys from hardware keystore, and erase your MPIN, TOTP secret, and user profile.\n\nYou will be returned to onboarding. This action cannot be undone.",
                     color = TextSecondary
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        transactionViewModel.clearAllData()
                         showPurgeDialog = false
-                        Toast.makeText(context, "Database purged", Toast.LENGTH_SHORT).show()
+                        authViewModel.nuclearWipe()
+                        Toast.makeText(context, "Kill switch executed. Vault destroyed.", Toast.LENGTH_SHORT).show()
+                        onNuclearWipeComplete()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
-                    Text("Wipe Data", color = Color.White)
+                    Text("Execute Kill Switch", color = Color.White)
                 }
             },
             dismissButton = {

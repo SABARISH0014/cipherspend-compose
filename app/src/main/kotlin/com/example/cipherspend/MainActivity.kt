@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.cipherspend.ui.components.MainAppScaffold
+import com.example.cipherspend.ui.screens.AppNotificationsScreen
 import com.example.cipherspend.ui.screens.InteractiveTrainingScreen
 import com.example.cipherspend.ui.screens.ManualEntryScreen
 import com.example.cipherspend.ui.screens.MpinSetupScreen
@@ -142,6 +143,14 @@ class MainActivity : FragmentActivity() {
                             },
                             onNavigateToDetail = { id ->
                                 navController.navigate("detail/$id")
+                            },
+                            onNavigateToNotifications = {
+                                navController.navigate("notifications")
+                            },
+                            onNuclearWipeComplete = {
+                                navController.navigate("verification") {
+                                    popUpTo(0) { inclusive = true }
+                                }
                             }
                         )
                     }
@@ -199,6 +208,16 @@ class MainActivity : FragmentActivity() {
                                 val encodedBody = Uri.encode(body)
                                 val encodedSender = Uri.encode(sender)
                                 navController.navigate("interactive_training?body=$encodedBody&sender=$encodedSender")
+                            }
+                        )
+                    }
+
+                    // 10. App Notifications / Insights Screen
+                    composable("notifications") {
+                        AppNotificationsScreen(
+                            viewModel = transactionViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
                             }
                         )
                     }

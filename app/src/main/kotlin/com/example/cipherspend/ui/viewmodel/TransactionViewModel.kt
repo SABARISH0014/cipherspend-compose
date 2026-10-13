@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cipherspend.data.dao.CategorySpend
 import com.example.cipherspend.data.db.DatabaseProvider
+import com.example.cipherspend.data.model.AppNotificationEntity
 import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.service.PredictionService
 import com.example.cipherspend.service.SmsParser
@@ -17,11 +18,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.YearMonth
+import java.time.ZoneId
 
 class TransactionViewModel(application: Application) : AndroidViewModel(application) {
     private val db = DatabaseProvider.getDatabase(application)
     private val predictionService = PredictionService.getInstance(application)
+
+    private val _selectedMonth = MutableStateFlow(YearMonth.now())
+    val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -37,9 +42,13 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     val transactions: StateFlow<List<TransactionEntity>> = combine(
         rawTransactions,
         _searchQuery,
-        _selectedCategoryFilter
-    ) { list, query, cat ->
-        var filtered = list
+        _selectedCategoryFilter,
+        _selectedMonth
+    ) { list, query, cat, ym ->
+        val start = ym.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val end = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        var filtered = list.filter { it.timestamp in start until end }
+
         if (query.isNotBlank()) {
             val q = query.trim().lowercase()
             filtered = filtered.filter {
@@ -58,7 +67,26 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     val allTransactions: StateFlow<List<TransactionEntity>> = rawTransactions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val notifications: StateFlow<List<AppNotificationEntity>> = db.appNotificationDao()
+        .getAllNotificationsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
+        refreshForecast()
+    }
+
+    fun selectPreviousMonth() {
+        _selectedMonth.value = _selectedMonth.value.minusMonths(1)
+        refreshForecast()
+    }
+
+    fun selectNextMonth() {
+        _selectedMonth.value = _selectedMonth.value.plusMonths(1)
+        refreshForecast()
+    }
+
+    fun selectMonth(yearMonth: YearMonth) {
+        _selectedMonth.value = yearMonth
         refreshForecast()
     }
 
@@ -72,7 +100,7 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
     fun refreshForecast() {
         viewModelScope.launch(Dispatchers.IO) {
-            val fc = predictionService.getSpendingForecast()
+            val fc = predictionService.getSpendingForecast(_selectedMonth.value)
             _forecast.value = fc
         }
     }
@@ -129,6 +157,18 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch(Dispatchers.IO) {
             db.transactionDao().delete(transaction)
             refreshForecast()
+        }
+    }
+
+    fun deleteNotification(notification: AppNotificationEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            db.appNotificationDao().deleteNotification(notification)
+        }
+    }
+
+    fun clearAllNotifications() {
+        viewModelScope.launch(Dispatchers.IO) {
+            db.appNotificationDao().clearAllNotifications()
         }
     }
 

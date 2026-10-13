@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.data.dao.CategorySpend
+import com.example.cipherspend.ui.components.MonthSelector
 import com.example.cipherspend.ui.components.SankeyChart
 import com.example.cipherspend.ui.components.getCategoryColor
 import com.example.cipherspend.ui.theme.CyberCyan
@@ -43,10 +44,11 @@ fun AnalyticsScreen(
     viewModel: TransactionViewModel
 ) {
     val forecast by viewModel.forecast.collectAsState()
-    val allTransactions by viewModel.allTransactions.collectAsState()
+    val transactions by viewModel.transactions.collectAsState()
+    val selectedMonth by viewModel.selectedMonth.collectAsState()
 
-    val categorySpends = remember(allTransactions) {
-        allTransactions.groupBy { it.category }
+    val categorySpends = remember(transactions) {
+        transactions.groupBy { it.category }
             .map { (cat, list) -> CategorySpend(cat, list.sumOf { it.amount }) }
             .sortedByDescending { it.total }
     }
@@ -89,6 +91,15 @@ fun AnalyticsScreen(
                     modifier = Modifier.size(28.dp)
                 )
             }
+        }
+
+        // Month-by-Month Selector
+        item {
+            MonthSelector(
+                selectedMonth = selectedMonth,
+                onPreviousMonth = { viewModel.selectPreviousMonth() },
+                onNextMonth = { viewModel.selectNextMonth() }
+            )
         }
 
         // Sankey Flowchart Card (Phase 2 Requirement)

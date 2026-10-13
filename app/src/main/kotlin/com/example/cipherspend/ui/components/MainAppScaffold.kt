@@ -76,7 +76,9 @@ fun MainAppScaffold(
     transactionViewModel: TransactionViewModel,
     onLockVault: () -> Unit,
     onNavigateToManualEntry: () -> Unit = {},
-    onNavigateToDetail: (Long) -> Unit = {}
+    onNavigateToDetail: (Long) -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
+    onNuclearWipeComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -220,7 +222,8 @@ fun MainAppScaffold(
                     selectedTab = 0
                     DashboardScreen(
                         viewModel = transactionViewModel,
-                        onNavigateToDetail = onNavigateToDetail
+                        onNavigateToDetail = onNavigateToDetail,
+                        onNavigateToNotifications = onNavigateToNotifications
                     )
                 }
                 composable(TabItem.Analytics.route) {
@@ -239,7 +242,8 @@ fun MainAppScaffold(
                     SettingsScreen(
                         authViewModel = authViewModel,
                         transactionViewModel = transactionViewModel,
-                        onLockVault = onLockVault
+                        onLockVault = onLockVault,
+                        onNuclearWipeComplete = onNuclearWipeComplete
                     )
                 }
             }

@@ -12,6 +12,8 @@ import com.example.cipherspend.data.model.TransactionEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 data class SyncProgress(
     val isSyncing: Boolean = false,
     val totalScanned: Int = 0,
@@ -21,6 +23,7 @@ data class SyncProgress(
 
 object SmsSyncManager {
     private const val TAG = "SmsSyncManager"
+    private val isSyncRunning = AtomicBoolean(false)
 
     private val _syncState = mutableStateOf(SyncProgress())
     val syncState: State<SyncProgress> = _syncState
@@ -28,6 +31,12 @@ object SmsSyncManager {
     suspend fun syncInbox(context: Context, fullRescan: Boolean = false): Int = withContext(Dispatchers.IO) {
         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "READ_SMS permission not granted, skipping inbox sync.")
+            return@withContext 0
+        }
+
+        // Concurrency guard: Prevent parallel duplicate syncs
+        if (!isSyncRunning.compareAndSet(false, true)) {
+            Log.d(TAG, "Sync is already running, skipping parallel execution.")
             return@withContext 0
         }
 
@@ -90,17 +99,21 @@ object SmsSyncManager {
                         continue
                     }
 
-                    // Parse bank/UPI SMS
-                    val tx = SmsParser.parseMessage(
-                        sender = sender,
-                        body = body,
-                        timestamp = timestamp,
-                        customRules = customRules,
-                        predictionService = predictionService
-                    )
+                    // Parse bank/UPI SMS with per-message fault isolation
+                    try {
+                        val tx = SmsParser.parseMessage(
+                            sender = sender,
+                            body = body,
+                            timestamp = timestamp,
+                            customRules = customRules,
+                            predictionService = predictionService
+                        )
 
-                    if (tx != null) {
-                        candidateTransactions.add(tx)
+                        if (tx != null) {
+                            candidateTransactions.add(tx)
+                        }
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "Error parsing message #$scanned: ${e.message}")
                     }
 
                     if (scanned % 50 == 0) {
@@ -115,8 +128,11 @@ object SmsSyncManager {
 
             var insertedCount = 0
             if (candidateTransactions.isNotEmpty()) {
-                val insertedIds = db.transactionDao().insertAll(candidateTransactions)
-                insertedCount = insertedIds.count { it != -1L }
+                // Chunk insertions to prevent SQLite bind variable limit exceptions
+                candidateTransactions.chunked(100).forEach { batch ->
+                    val insertedIds = db.transactionDao().insertAll(batch)
+                    insertedCount += insertedIds.count { it != -1L }
+                }
                 Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found ${candidateTransactions.size} transactions, inserted $insertedCount new rows.")
             } else {
                 Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found 0 new transactions.")
@@ -142,6 +158,8 @@ object SmsSyncManager {
                 error = e.message
             )
             return@withContext 0
+        } finally {
+            isSyncRunning.set(false)
         }
     }
 }

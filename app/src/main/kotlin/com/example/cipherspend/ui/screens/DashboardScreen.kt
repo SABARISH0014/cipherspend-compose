@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.cipherspend.data.model.TransactionEntity
+import com.example.cipherspend.ui.components.MonthSelector
 import com.example.cipherspend.ui.components.getCategoryColor
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -70,11 +72,14 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(
     viewModel: TransactionViewModel,
-    onNavigateToDetail: (Long) -> Unit
+    onNavigateToDetail: (Long) -> Unit,
+    onNavigateToNotifications: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val transactions by viewModel.transactions.collectAsState()
     val forecast by viewModel.forecast.collectAsState()
+    val selectedMonth by viewModel.selectedMonth.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
     val syncProgress by SmsSyncManager.syncState
@@ -106,11 +111,6 @@ fun DashboardScreen(
         val granted = perms[Manifest.permission.RECEIVE_SMS] == true &&
                 perms[Manifest.permission.READ_SMS] == true
         hasSmsPermission = granted
-        if (granted) {
-            coroutineScope.launch {
-                SmsSyncManager.syncInbox(context)
-            }
-        }
     }
 
     LazyColumn(
@@ -140,19 +140,46 @@ fun DashboardScreen(
                         )
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
-                        .padding(10.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Encrypted",
-                        tint = NeonEmerald,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                            .clickable { onNavigateToNotifications() }
+                            .padding(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = if (notifications.isNotEmpty()) CyberCyan else TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                            .padding(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Encrypted",
+                            tint = NeonEmerald,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
+        }
+
+        // Month-by-Month Selector
+        item {
+            MonthSelector(
+                selectedMonth = selectedMonth,
+                onPreviousMonth = { viewModel.selectPreviousMonth() },
+                onNextMonth = { viewModel.selectNextMonth() }
+            )
         }
 
         // Budget Summary Card

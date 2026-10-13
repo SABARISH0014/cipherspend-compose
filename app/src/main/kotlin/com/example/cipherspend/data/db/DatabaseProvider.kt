@@ -21,6 +21,45 @@ object DatabaseProvider {
         }
     }
 
+    fun nuclearWipe(context: Context) {
+        synchronized(this) {
+            instance?.let {
+                if (it.isOpen) {
+                    it.close()
+                }
+            }
+            instance = null
+        }
+
+        // Completely delete the Room database file
+        context.applicationContext.deleteDatabase(DB_NAME)
+
+        // Clear EncryptedSharedPreferences (wiping the DB passphrase)
+        try {
+            val masterKey = MasterKey.Builder(context.applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            val sharedPreferences = EncryptedSharedPreferences.create(
+                context.applicationContext,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+            sharedPreferences.edit().clear().commit()
+        } catch (e: Exception) {
+            // In case Keystore is altered or unavailable
+        }
+
+        // Clear fallback vault
+        try {
+            context.applicationContext.getSharedPreferences("cipher_fallback_vault", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        } catch (e: Exception) {
+            // Ignored
+        }
+    }
+
     private fun buildDatabase(context: Context): AppDatabase {
         System.loadLibrary("sqlcipher")
         val passphrase = getOrCreatePassphrase(context)

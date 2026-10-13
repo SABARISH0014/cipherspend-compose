@@ -3,6 +3,7 @@ package com.example.cipherspend.ui.viewmodel
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
+import com.example.cipherspend.data.db.DatabaseProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -122,6 +123,28 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun lockVault() {
         _isAuthenticated.value = false
+    }
+
+    fun nuclearWipe() {
+        val appContext = getApplication<Application>().applicationContext
+
+        // 1. Completely delete Room database file and encrypted vault keys
+        DatabaseProvider.nuclearWipe(appContext)
+
+        // 2. Clear Auth SharedPreferences (MPIN, TOTP secret, Phone, Biometrics)
+        prefs.edit().clear().commit()
+
+        // 3. Clear General SharedPreferences (Name, Budget, Cycle, Alerts)
+        val generalPrefs = appContext.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
+        generalPrefs.edit().clear().commit()
+
+        // 4. Reset in-memory StateFlows
+        _isConfigured.value = false
+        _isAuthenticated.value = false
+        _isBiometricEnabled.value = false
+        _isTotpEnabled.value = false
+        _totpSecret.value = null
+        _phoneNumber.value = ""
     }
 
     private fun hashString(input: String): String {

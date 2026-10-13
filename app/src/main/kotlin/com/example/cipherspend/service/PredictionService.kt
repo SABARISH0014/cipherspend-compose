@@ -12,6 +12,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.util.Calendar
+import java.time.YearMonth
+import java.time.ZoneId
 
 data class SpendingForecast(
     val budget: Double,
@@ -24,7 +26,11 @@ data class SpendingForecast(
 )
 
 class PredictionService private constructor(private val context: Context) {
+    private val inferenceLock = Any()
     private var interpreter: Interpreter? = null
+    private var modelByteBuffer: ByteBuffer? = null
+    private var cachedInputBuffer: ByteBuffer? = null
+    private var cachedOutputBuffer: Array<FloatArray>? = null
     private var vocab: Map<String, Int> = emptyMap()
     private var labels: List<String> = emptyList()
     private var sequenceLength: Int = 20
@@ -35,16 +41,20 @@ class PredictionService private constructor(private val context: Context) {
 
     private fun loadModel() {
         try {
-            // Load TFLite model from assets
-            val assetFileDescriptor = context.assets.openFd("sms_model.tflite")
-            val fileInputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
-            val fileChannel = fileInputStream.channel
-            val startOffset = assetFileDescriptor.startOffset
-            val declaredLength = assetFileDescriptor.declaredLength
-            val modelBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+            // Read TFLite model completely into an in-memory direct ByteBuffer
+            // This prevents file descriptor closure, APK offset bugs, and GC unmapping crashes
+            val modelBytes = context.assets.open("sms_model.tflite").use { it.readBytes() }
+            val buffer = ByteBuffer.allocateDirect(modelBytes.size).apply {
+                order(ByteOrder.nativeOrder())
+                put(modelBytes)
+                rewind()
+            }
+            modelByteBuffer = buffer
 
-            val options = Interpreter.Options()
-            interpreter = Interpreter(modelBuffer, options)
+            val options = Interpreter.Options().apply {
+                setNumThreads(2)
+            }
+            interpreter = Interpreter(buffer, options)
 
             // Dynamic input & output shape detection
             val inputShape = interpreter?.getInputTensor(0)?.shape()
@@ -53,6 +63,10 @@ class PredictionService private constructor(private val context: Context) {
             }
             val outputShape = interpreter?.getOutputTensor(0)?.shape()
             val numClasses = if (outputShape != null && outputShape.size > 1) outputShape[1] else 11
+
+            // Pre-allocate cached direct input and output buffers to eliminate repeated allocations
+            cachedInputBuffer = ByteBuffer.allocateDirect(4 * sequenceLength).order(ByteOrder.nativeOrder())
+            cachedOutputBuffer = Array(1) { FloatArray(numClasses) }
 
             // Load Vocab JSON
             val vocabString = context.assets.open("vocab.json").bufferedReader().use { it.readText() }
@@ -88,26 +102,24 @@ class PredictionService private constructor(private val context: Context) {
         }
     }
 
-    fun predictCategory(text: String): String {
+    fun predictCategory(text: String): String = synchronized(inferenceLock) {
         val activeInterpreter = interpreter ?: return fallbackCategorize(text)
         if (labels.isEmpty()) return fallbackCategorize(text)
 
         try {
             val inputFeatures = tokenizeAndPad(text, sequenceLength)
-            val inputBuffer = ByteBuffer.allocateDirect(4 * sequenceLength).apply {
-                order(ByteOrder.nativeOrder())
-                for (v in inputFeatures) {
-                    putFloat(v)
-                }
-                rewind()
+            val inBuf = cachedInputBuffer ?: ByteBuffer.allocateDirect(4 * sequenceLength).order(ByteOrder.nativeOrder())
+            val outBuf = cachedOutputBuffer ?: Array(1) { FloatArray(labels.size) }
+
+            inBuf.clear()
+            for (v in inputFeatures) {
+                inBuf.putFloat(v)
             }
+            inBuf.rewind()
 
-            val numClasses = labels.size
-            val outputBuffer = Array(1) { FloatArray(numClasses) }
+            activeInterpreter.run(inBuf, outBuf)
 
-            activeInterpreter.run(inputBuffer, outputBuffer)
-
-            val probabilities = outputBuffer[0]
+            val probabilities = outBuf[0]
             var bestIdx = 0
             var maxProb = -1.0f
             for (i in probabilities.indices) {
@@ -124,9 +136,8 @@ class PredictionService private constructor(private val context: Context) {
             } else {
                 predicted
             }
-            Log.d("PredictionService", "Predicted: $result (raw: $predicted, conf: $maxProb)")
             return result
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("PredictionService", "Error during inference: ${e.message}")
             return fallbackCategorize(text)
         }
@@ -210,23 +221,15 @@ class PredictionService private constructor(private val context: Context) {
         }
     }
 
-    suspend fun getSpendingForecast(): SpendingForecast {
+    suspend fun getSpendingForecast(targetMonth: YearMonth? = null): SpendingForecast {
         val prefs = context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
         val budget = prefs.getFloat("monthly_budget", 25000f).toDouble()
 
-        val calendar = Calendar.getInstance()
-        val nowDay = calendar.get(Calendar.DAY_OF_MONTH)
-        val maxDays = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val currentYm = YearMonth.now()
+        val ym = targetMonth ?: currentYm
 
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val start = calendar.timeInMillis
-
-        calendar.add(Calendar.MONTH, 1)
-        val end = calendar.timeInMillis
+        val start = ym.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val end = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
         val db = DatabaseProvider.getDatabase(context)
         val spent = db.transactionDao().getMonthlySpend(start, end) ?: 0.0
@@ -234,9 +237,18 @@ class PredictionService private constructor(private val context: Context) {
         val topCategory = catSpends.firstOrNull()?.category ?: "None"
         val topAmount = catSpends.firstOrNull()?.total ?: 0.0
 
-        val daysRemaining = maxDays - nowDay
+        val maxDays = ym.lengthOfMonth()
+        val nowDay = if (ym == currentYm) {
+            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        } else if (ym.isBefore(currentYm)) {
+            maxDays
+        } else {
+            0
+        }
+
+        val daysRemaining = (maxDays - nowDay).coerceAtLeast(0)
         val dailyAverage = if (nowDay > 0) spent / nowDay else 0.0
-        val projected = spent + (dailyAverage * daysRemaining)
+        val projected = if (ym.isBefore(currentYm)) spent else spent + (dailyAverage * daysRemaining)
         val progress = (spent / (if (budget > 0) budget else 1.0)).coerceIn(0.0, 1.0).toFloat()
 
         return SpendingForecast(
