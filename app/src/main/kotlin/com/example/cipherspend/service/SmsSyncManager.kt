@@ -48,6 +48,7 @@ object SmsSyncManager {
             val predictionService = PredictionService.getInstance(context)
 
             val prefs = context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
+            val autoDropDuplicates = prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
             val verifiedSubId = prefs.getInt("verified_sub_id", -1)
             val currentTxCount = db.transactionDao().getTransactionCount()
             val lastSyncTime = if (fullRescan || currentTxCount == 0) 0L else prefs.getLong("last_sms_sync_timestamp", 0L)
@@ -110,7 +111,17 @@ object SmsSyncManager {
                         )
 
                         if (tx != null) {
-                            candidateTransactions.add(tx)
+                            if (!db.ignoredHashDao().isHashIgnored(tx.hash)) {
+                                val isDup = autoDropDuplicates && db.transactionDao().existsSimilarTransaction(
+                                    body = tx.body,
+                                    amount = tx.amount,
+                                    merchant = tx.merchant,
+                                    timestamp = tx.timestamp
+                                )
+                                if (!isDup) {
+                                    candidateTransactions.add(tx)
+                                }
+                            }
                         }
                     } catch (e: Throwable) {
                         Log.w(TAG, "Error parsing message #$scanned: ${e.message}")

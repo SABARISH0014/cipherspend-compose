@@ -18,6 +18,7 @@ import com.example.cipherspend.ui.screens.AppNotificationsScreen
 import com.example.cipherspend.ui.screens.InteractiveTrainingScreen
 import com.example.cipherspend.ui.screens.ManualEntryScreen
 import com.example.cipherspend.ui.screens.MpinSetupScreen
+import com.example.cipherspend.ui.screens.ProfileEditScreen
 import com.example.cipherspend.ui.screens.ProfileSetupScreen
 import com.example.cipherspend.ui.screens.StartupScreen
 import com.example.cipherspend.ui.screens.TransactionDetailScreen
@@ -147,6 +148,9 @@ class MainActivity : FragmentActivity() {
                             onNavigateToNotifications = {
                                 navController.navigate("notifications")
                             },
+                            onNavigateToProfileEdit = {
+                                navController.navigate("profile_edit")
+                            },
                             onNuclearWipeComplete = {
                                 navController.navigate("verification") {
                                     popUpTo(0) { inclusive = true }
@@ -216,6 +220,17 @@ class MainActivity : FragmentActivity() {
                     composable("notifications") {
                         AppNotificationsScreen(
                             viewModel = transactionViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // 11. Profile Edit Screen
+                    composable("profile_edit") {
+                        ProfileEditScreen(
+                            authViewModel = authViewModel,
+                            transactionViewModel = transactionViewModel,
                             onNavigateBack = {
                                 navController.popBackStack()
                             }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cipherspend.data.dao.CategorySpend
 import com.example.cipherspend.data.db.DatabaseProvider
 import com.example.cipherspend.data.model.AppNotificationEntity
+import com.example.cipherspend.data.model.IgnoredHashEntity
 import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.service.PredictionService
 import com.example.cipherspend.service.SmsParser
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneId
+import java.util.Calendar
 
 class TransactionViewModel(application: Application) : AndroidViewModel(application) {
     private val db = DatabaseProvider.getDatabase(application)
@@ -33,6 +35,15 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _selectedCategoryFilter = MutableStateFlow<String?>(null)
     val selectedCategoryFilter: StateFlow<String?> = _selectedCategoryFilter.asStateFlow()
+
+    private val _startDate = MutableStateFlow<Long?>(null)
+    val startDate: StateFlow<Long?> = _startDate.asStateFlow()
+
+    private val _endDate = MutableStateFlow<Long?>(null)
+    val endDate: StateFlow<Long?> = _endDate.asStateFlow()
+
+    private val _selectedTypeFilter = MutableStateFlow<String?>(null)
+    val selectedTypeFilter: StateFlow<String?> = _selectedTypeFilter.asStateFlow()
 
     private val _forecast = MutableStateFlow<SpendingForecast?>(null)
     val forecast: StateFlow<SpendingForecast?> = _forecast.asStateFlow()
@@ -61,6 +72,52 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         if (cat != null && cat != "All") {
             filtered = filtered.filter { it.category.equals(cat, ignoreCase = true) }
         }
+        filtered
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val searchResults: StateFlow<List<TransactionEntity>> = combine(
+        rawTransactions,
+        _searchQuery,
+        _selectedCategoryFilter,
+        combine(_selectedTypeFilter, _startDate, _endDate) { type, start, end ->
+            Triple(type, start, end)
+        }
+    ) { list, query, cat, (type, start, end) ->
+        var filtered = list
+
+        if (start != null) {
+            filtered = filtered.filter { it.timestamp >= start }
+        }
+        if (end != null) {
+            val calendar = Calendar.getInstance().apply {
+                timeInMillis = end
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }
+            val endOfDayMillis = calendar.timeInMillis
+            filtered = filtered.filter { it.timestamp <= endOfDayMillis }
+        }
+
+        if (!type.isNullOrBlank() && type != "All") {
+            filtered = filtered.filter { it.type.equals(type, ignoreCase = true) }
+        }
+
+        if (!cat.isNullOrBlank() && cat != "All") {
+            filtered = filtered.filter { it.category.equals(cat, ignoreCase = true) }
+        }
+
+        if (query.isNotBlank()) {
+            val q = query.trim().lowercase()
+            filtered = filtered.filter {
+                it.merchant.lowercase().contains(q) ||
+                it.body.lowercase().contains(q) ||
+                it.category.lowercase().contains(q) ||
+                it.sender.lowercase().contains(q)
+            }
+        }
+
         filtered
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -98,6 +155,23 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         _selectedCategoryFilter.value = category
     }
 
+    fun setDateRange(start: Long?, end: Long?) {
+        _startDate.value = start
+        _endDate.value = end
+    }
+
+    fun setTypeFilter(type: String?) {
+        _selectedTypeFilter.value = type
+    }
+
+    fun clearFilters() {
+        _searchQuery.value = ""
+        _selectedCategoryFilter.value = null
+        _selectedTypeFilter.value = null
+        _startDate.value = null
+        _endDate.value = null
+    }
+
     fun refreshForecast() {
         viewModelScope.launch(Dispatchers.IO) {
             val fc = predictionService.getSpendingForecast(_selectedMonth.value)
@@ -109,13 +183,13 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         amount: Double,
         merchant: String,
         category: String,
-        type: String = "Manual"
+        type: String = "Manual",
+        timestamp: Long = System.currentTimeMillis()
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
             val cleanMerchant = merchant.ifBlank { "Manual Entry" }
             val cleanCat = category.ifBlank { "Others" }
-            val hash = SmsParser.generateHash("MANUAL", "$cleanMerchant$amount", now)
+            val hash = SmsParser.generateHash("MANUAL", "$cleanMerchant$amount", timestamp)
             val entity = TransactionEntity(
                 hash = hash,
                 sender = "MANUAL",
@@ -124,7 +198,7 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                 category = cleanCat,
                 type = type,
                 merchant = cleanMerchant,
-                timestamp = now
+                timestamp = timestamp
             )
             db.transactionDao().insert(entity)
             predictionService.checkSpendingLimits()
@@ -153,8 +227,18 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun updateTransactionCategory(transactionId: Long, newCategory: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = db.transactionDao().getTransactionById(transactionId) ?: return@launch
+            val updated = existing.copy(category = newCategory.trim())
+            db.transactionDao().update(updated)
+            refreshForecast()
+        }
+    }
+
     fun deleteTransaction(transaction: TransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
+            db.ignoredHashDao().insertIgnoredHash(IgnoredHashEntity(transaction.hash))
             db.transactionDao().delete(transaction)
             refreshForecast()
         }

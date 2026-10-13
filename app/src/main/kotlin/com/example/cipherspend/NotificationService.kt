@@ -1,6 +1,7 @@
 package com.example.cipherspend
 
 import android.app.Notification
+import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -48,6 +49,9 @@ class NotificationService : NotificationListenerService() {
                 val customRules = db.customRuleDao().getAllRules()
                 val predictionService = PredictionService.getInstance(applicationContext)
 
+                val prefs = applicationContext.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
+                val autoDropDuplicates = prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
+
                 val parsedTx = SmsParser.parseMessage(
                     sender = senderName,
                     body = fullBody,
@@ -57,6 +61,17 @@ class NotificationService : NotificationListenerService() {
                 )
 
                 if (parsedTx != null) {
+                    if (db.ignoredHashDao().isHashIgnored(parsedTx.hash)) {
+                        return@launch
+                    }
+                    if (autoDropDuplicates && db.transactionDao().existsSimilarTransaction(
+                        body = parsedTx.body,
+                        amount = parsedTx.amount,
+                        merchant = parsedTx.merchant,
+                        timestamp = parsedTx.timestamp
+                    )) {
+                        return@launch
+                    }
                     val rowId = db.transactionDao().insert(parsedTx)
                     if (rowId != -1L) {
                         Log.d("NotificationService", "Saved notification transaction: ₹${parsedTx.amount} to ${parsedTx.merchant}")

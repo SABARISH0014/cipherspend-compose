@@ -78,6 +78,7 @@ fun MainAppScaffold(
     onNavigateToManualEntry: () -> Unit = {},
     onNavigateToDetail: (Long) -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToProfileEdit: () -> Unit = {},
     onNuclearWipeComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -223,7 +224,8 @@ fun MainAppScaffold(
                     DashboardScreen(
                         viewModel = transactionViewModel,
                         onNavigateToDetail = onNavigateToDetail,
-                        onNavigateToNotifications = onNavigateToNotifications
+                        onNavigateToNotifications = onNavigateToNotifications,
+                        onNavigateToProfileEdit = onNavigateToProfileEdit
                     )
                 }
                 composable(TabItem.Analytics.route) {

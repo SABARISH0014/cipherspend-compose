@@ -116,6 +116,21 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         _totpSecret.value = null
     }
 
+    fun verifyCurrentTotp(code: String): Boolean {
+        val secret = prefs.getString("totp_secret", null) ?: return false
+        return verifyTotpCode(secret, code)
+    }
+
+    fun verifyTotpCodeInput(code: String): Boolean = verifyCurrentTotp(code)
+
+    fun changeMpin(newMpin: String): Boolean {
+        if (newMpin.length != 4 || !newMpin.all { it.isDigit() }) return false
+        val hash = hashString(newMpin)
+        prefs.edit().putString("user_mpin_hash", hash).apply()
+        DatabaseProvider.rekeyDatabase(getApplication(), newMpin)
+        return true
+    }
+
     fun setBiometricEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("biometric_enabled", enabled).apply()
         _isBiometricEnabled.value = enabled

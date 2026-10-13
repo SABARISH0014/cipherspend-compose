@@ -39,6 +39,8 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                 val customRules = db.customRuleDao().getAllRules()
                 val predictionService = PredictionService.getInstance(context)
 
+                val autoDropDuplicates = prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
+
                 pdus.forEach { pdu ->
                     val msg = SmsMessage.createFromPdu(pdu as ByteArray, format)
                     val sender = msg.originatingAddress ?: "Unknown"
@@ -54,6 +56,17 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                     )
 
                     if (parsedTx != null) {
+                        if (db.ignoredHashDao().isHashIgnored(parsedTx.hash)) {
+                            return@forEach
+                        }
+                        if (autoDropDuplicates && db.transactionDao().existsSimilarTransaction(
+                            body = parsedTx.body,
+                            amount = parsedTx.amount,
+                            merchant = parsedTx.merchant,
+                            timestamp = parsedTx.timestamp
+                        )) {
+                            return@forEach
+                        }
                         val rowId = db.transactionDao().insert(parsedTx)
                         if (rowId != -1L) {
                             Log.d("SmsBackgroundReceiver", "Saved transaction: ₹${parsedTx.amount} to ${parsedTx.merchant}")

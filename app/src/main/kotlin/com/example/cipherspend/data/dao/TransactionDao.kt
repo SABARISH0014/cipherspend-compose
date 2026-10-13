@@ -61,4 +61,27 @@ interface TransactionDao {
         ORDER BY timestamp DESC
     """)
     fun searchTransactions(query: String): Flow<List<TransactionEntity>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE body = :body AND abs(timestamp - :timestamp) <= :windowMs)")
+    suspend fun hasExactBodyMatch(body: String, timestamp: Long, windowMs: Long = 259_200_000L): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE amount = :amount AND merchant = :merchant AND merchant != 'Unknown' AND merchant != 'Unknown Merchant' AND abs(timestamp - :timestamp) <= :windowMs)")
+    suspend fun hasMerchantAmountMatch(amount: Double, merchant: String, timestamp: Long, windowMs: Long = 259_200_000L): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE amount = :amount AND abs(timestamp - :timestamp) <= :windowMs)")
+    suspend fun hasFuzzyAmountMatch(amount: Double, timestamp: Long, windowMs: Long = 3_600_000L): Boolean
+
+    suspend fun existsSimilarTransaction(
+        body: String,
+        amount: Double,
+        merchant: String,
+        timestamp: Long
+    ): Boolean {
+        if (hasExactBodyMatch(body, timestamp)) return true
+        if (merchant.isNotBlank() && merchant != "Unknown" && merchant != "Unknown Merchant") {
+            if (hasMerchantAmountMatch(amount, merchant, timestamp)) return true
+        }
+        if (hasFuzzyAmountMatch(amount, timestamp)) return true
+        return false
+    }
 }

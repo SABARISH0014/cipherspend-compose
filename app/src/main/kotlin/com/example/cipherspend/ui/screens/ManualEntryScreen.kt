@@ -23,10 +23,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CurrencyRupee
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +40,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +66,11 @@ import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualEntryScreen(
     viewModel: TransactionViewModel,
@@ -71,6 +83,8 @@ fun ManualEntryScreen(
     var merchantText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Food & Dining") }
     var selectedType by remember { mutableStateOf("UPI") }
+    var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val categories = listOf("Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Others")
@@ -88,7 +102,8 @@ fun ManualEntryScreen(
             amount = amt,
             merchant = cleanMerchant,
             category = selectedCategory,
-            type = selectedType
+            type = selectedType,
+            timestamp = selectedDateMillis
         )
         Toast.makeText(context, "Transaction saved to offline vault", Toast.LENGTH_SHORT).show()
         onNavigateBack()
@@ -158,11 +173,11 @@ fun ManualEntryScreen(
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.CurrencyRupee,
-                                        contentDescription = null,
+                                        contentDescription = "Amount",
                                         tint = CyberCyan
                                     )
                                 },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(14.dp),
@@ -185,11 +200,11 @@ fun ManualEntryScreen(
                                     merchantText = it
                                     errorMessage = null
                                 },
-                                label = { Text("Merchant / Store Name") },
+                                label = { Text("Merchant / Description") },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Store,
-                                        contentDescription = null,
+                                        contentDescription = "Merchant",
                                         tint = CyberCyan
                                     )
                                 },
@@ -207,6 +222,55 @@ fun ManualEntryScreen(
                                     unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.4f)
                                 )
                             )
+
+                            // Date Section Card
+                            Column {
+                                Text(
+                                    text = "Date",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = TextSecondary,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                val formattedDate = remember(selectedDateMillis) {
+                                    SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(Date(selectedDateMillis))
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(Color(0xFF131B2A).copy(alpha = 0.6f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
+                                        .clickable { showDatePicker = true }
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarMonth,
+                                            contentDescription = "Date",
+                                            tint = CyberCyan,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = formattedDate,
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                color = TextPrimary,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.EditCalendar,
+                                        contentDescription = "Select Date",
+                                        tint = CyberCyan,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
 
                             // Category Selector
                             Column {
@@ -325,6 +389,56 @@ fun ManualEntryScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Material3 DatePickerDialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            selectedDateMillis = it
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Confirm", color = CyberCyan, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = Color(0xFF0F1726)
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Color(0xFF0F1726),
+                    titleContentColor = TextPrimary,
+                    headlineContentColor = TextPrimary,
+                    weekdayContentColor = TextSecondary,
+                    subheadContentColor = TextSecondary,
+                    yearContentColor = TextPrimary,
+                    currentYearContentColor = CyberCyan,
+                    selectedYearContentColor = Color.Black,
+                    selectedYearContainerColor = CyberCyan,
+                    dayContentColor = TextPrimary,
+                    selectedDayContentColor = Color.Black,
+                    selectedDayContainerColor = CyberCyan,
+                    todayContentColor = CyberCyan,
+                    todayDateBorderColor = CyberCyan
+                )
+            )
         }
     }
 }

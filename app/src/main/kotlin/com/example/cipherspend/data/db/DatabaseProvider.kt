@@ -1,14 +1,17 @@
 package com.example.cipherspend.data.db
 
 import android.content.Context
+import android.util.Base64
+import android.util.Log
 import androidx.room.Room
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import java.security.MessageDigest
 import java.security.SecureRandom
-import android.util.Base64
 
 object DatabaseProvider {
+    private const val TAG = "DatabaseProvider"
     @Volatile
     private var instance: AppDatabase? = null
     private const val DB_NAME = "cipherspend_encrypted.db"
@@ -18,6 +21,59 @@ object DatabaseProvider {
     fun getDatabase(context: Context): AppDatabase {
         return instance ?: synchronized(this) {
             instance ?: buildDatabase(context.applicationContext).also { instance = it }
+        }
+    }
+
+    fun rekeyDatabase(context: Context, newPassphraseSeed: String) {
+        synchronized(this) {
+            val newKeyBytes = MessageDigest.getInstance("SHA-256").digest(newPassphraseSeed.toByteArray())
+            val newKeyEncoded = Base64.encodeToString(newKeyBytes, Base64.NO_WRAP)
+            val hexKey = newKeyBytes.joinToString("") { "%02x".format(it) }
+
+            val activeDb = instance ?: getDatabase(context)
+            try {
+                val writableDb = activeDb.openHelper.writableDatabase
+                writableDb.execSQL("PRAGMA rekey = \"x'$hexKey'\";")
+                Log.d(TAG, "SQLCipher database rekeyed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to rekey SQLCipher database: ${e.message}", e)
+            }
+
+            savePassphrase(context, newKeyEncoded)
+
+            try {
+                if (activeDb.isOpen) {
+                    activeDb.close()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error closing db after rekey: ${e.message}")
+            }
+            instance = null
+        }
+    }
+
+    private fun savePassphrase(context: Context, keyEncoded: String) {
+        try {
+            val masterKey = MasterKey.Builder(context.applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            val sharedPreferences = EncryptedSharedPreferences.create(
+                context.applicationContext,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+            sharedPreferences.edit().putString(KEY_DB_PASSPHRASE, keyEncoded).commit()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to save rekeyed passphrase to EncryptedSharedPreferences: ${e.message}")
+        }
+
+        try {
+            context.applicationContext.getSharedPreferences("cipher_fallback_vault", Context.MODE_PRIVATE)
+                .edit().putString(KEY_DB_PASSPHRASE, keyEncoded).commit()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to save rekeyed passphrase to fallback vault: ${e.message}")
         }
     }
 

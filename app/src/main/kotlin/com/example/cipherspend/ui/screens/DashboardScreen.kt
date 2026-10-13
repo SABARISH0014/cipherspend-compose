@@ -73,7 +73,8 @@ import java.util.Locale
 fun DashboardScreen(
     viewModel: TransactionViewModel,
     onNavigateToDetail: (Long) -> Unit,
-    onNavigateToNotifications: () -> Unit = {}
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToProfileEdit: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val transactions by viewModel.transactions.collectAsState()
@@ -83,6 +84,9 @@ fun DashboardScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val syncProgress by SmsSyncManager.syncState
+
+    val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
+    val profileImage = prefs.getString("pref_profile_image", "assets/avatars/avatar1.png")
 
     var hasSmsPermission by remember {
         mutableStateOf(
@@ -167,6 +171,19 @@ fun DashboardScreen(
                             contentDescription = "Encrypted",
                             tint = NeonEmerald,
                             modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, CyberCyan.copy(alpha = 0.6f), CircleShape)
+                            .clickable { onNavigateToProfileEdit() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AvatarDisplay(
+                            imagePath = profileImage,
+                            modifier = Modifier.size(40.dp)
                         )
                     }
                 }

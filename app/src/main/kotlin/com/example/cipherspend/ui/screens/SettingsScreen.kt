@@ -1,5 +1,10 @@
 package com.example.cipherspend.ui.screens
 
+import android.app.AppOpsManager
+import android.content.Context
+import android.content.Intent
+import android.os.Process
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,12 +24,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -54,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cipherspend.ui.components.HighRiskGuardDialog
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.NeonEmerald
@@ -76,6 +85,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
 
+    val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
+
     val isBiometricEnabled by authViewModel.isBiometricEnabled.collectAsState()
     val isTotpEnabled by authViewModel.isTotpEnabled.collectAsState()
     val totpSecret by authViewModel.totpSecret.collectAsState()
@@ -84,10 +95,33 @@ fun SettingsScreen(
     var showTotpDialog by remember { mutableStateOf(false) }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var showPurgeDialog by remember { mutableStateOf(false) }
+    var showTotpGuardForPurge by remember { mutableStateOf(false) }
 
     var candidateTotpSecret by remember { mutableStateOf("") }
     var totpInputCode by remember { mutableStateOf("") }
     var budgetInput by remember { mutableStateOf((forecast?.budget ?: 25000.0).toInt().toString()) }
+
+    var autoDropDuplicates by remember {
+        mutableStateOf(
+            prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
+        )
+    }
+    var smartPromptsEnabled by remember {
+        mutableStateOf(prefs.getBoolean("smart_prompt_enabled", false))
+    }
+    var advancedSettingsEnabled by remember {
+        mutableStateOf(prefs.getBoolean("advanced_settings", false))
+    }
+
+    fun hasUsageStatsPermission(): Boolean {
+        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
+        val mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            context.packageName
+        )
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -112,7 +146,7 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Progressive Security & Advanced Vault Mode (Step 6.1)
+        // Section: Progressive Security & Advanced Vault Mode
         item {
             Text(
                 text = "Progressive Security",
@@ -253,6 +287,182 @@ fun SettingsScreen(
                             }
                         }
                         Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = CyberCyan)
+                    }
+                }
+            }
+        }
+
+        // Section: Automation & Rules
+        item {
+            Text(
+                text = "Automation & Rules",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+        }
+
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(shape = RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // 1. Auto-Drop Duplicates Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CopyAll,
+                                contentDescription = "Duplicates",
+                                tint = CyberCyan,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Auto-Drop Duplicates",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontSize = 15.sp
+                                    )
+                                )
+                                Text(
+                                    text = "Discard exact/similar transactions automatically",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = autoDropDuplicates,
+                            onCheckedChange = {
+                                autoDropDuplicates = it
+                                prefs.edit()
+                                    .putString("dedupe_rule", if (it) "auto_drop" else "ask")
+                                    .putBoolean("auto_drop_duplicates", it)
+                                    .apply()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = CyberCyan,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = SurfaceDark
+                            )
+                        )
+                    }
+
+                    // 2. Smart Prompts Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = "Smart Prompts",
+                                tint = NeonEmerald,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Smart Prompts",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontSize = 15.sp
+                                    )
+                                )
+                                Text(
+                                    text = "Usage-aware instant transaction suggestions",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = smartPromptsEnabled,
+                            onCheckedChange = {
+                                if (it && !hasUsageStatsPermission()) {
+                                    Toast.makeText(context, "Please enable Usage Access for CipherSpend", Toast.LENGTH_LONG).show()
+                                    try {
+                                        context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        })
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Could not open usage settings", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                smartPromptsEnabled = it
+                                prefs.edit().putBoolean("smart_prompt_enabled", it).apply()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = NeonEmerald,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = SurfaceDark
+                            )
+                        )
+                    }
+
+                    // 3. Advanced Settings Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = "Advanced",
+                                tint = PurpleGlow,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Advanced Settings",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontSize = 15.sp
+                                    )
+                                )
+                                Text(
+                                    text = "Enables manual sync and regex NER editor",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = advancedSettingsEnabled,
+                            onCheckedChange = {
+                                advancedSettingsEnabled = it
+                                prefs.edit().putBoolean("advanced_settings", it).apply()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = PurpleGlow,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = SurfaceDark
+                            )
+                        )
                     }
                 }
             }
@@ -498,14 +708,14 @@ fun SettingsScreen(
         )
     }
 
-    // Kill Switch Confirmation Dialog
+    // Kill Switch Initial Warning Dialog
     if (showPurgeDialog) {
         AlertDialog(
             onDismissRequest = { showPurgeDialog = false },
             title = { Text("Factory Reset Vault?", color = DangerRed) },
             text = {
                 Text(
-                    text = "This will permanently destroy the encrypted database (cipherspend_encrypted.db), wipe encryption keys from hardware keystore, and erase your MPIN, TOTP secret, and user profile.\n\nYou will be returned to onboarding. This action cannot be undone.",
+                    text = "This will permanently destroy the encrypted database (cipherspend_encrypted.db), wipe encryption keys from hardware keystore, and erase your MPIN, TOTP secret, and user profile.\n\nYou will be prompted for TOTP authorization next.",
                     color = TextSecondary
                 )
             },
@@ -513,13 +723,11 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showPurgeDialog = false
-                        authViewModel.nuclearWipe()
-                        Toast.makeText(context, "Kill switch executed. Vault destroyed.", Toast.LENGTH_SHORT).show()
-                        onNuclearWipeComplete()
+                        showTotpGuardForPurge = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
-                    Text("Execute Kill Switch", color = Color.White)
+                    Text("Authenticate & Wipe", color = Color.White)
                 }
             },
             dismissButton = {
@@ -528,6 +736,22 @@ fun SettingsScreen(
                 }
             },
             containerColor = Color(0xFF131B2A)
+        )
+    }
+
+    // High Risk Guard Dialog requiring 6-digit TOTP before Factory Reset executes
+    if (showTotpGuardForPurge) {
+        HighRiskGuardDialog(
+            title = "Authorize Vault Destruction",
+            message = "Enter your 6-digit TOTP code to authorize permanent destruction of the encrypted database.",
+            onVerify = { code -> authViewModel.verifyCurrentTotp(code) },
+            onDismiss = { showTotpGuardForPurge = false },
+            onAuthorized = {
+                showTotpGuardForPurge = false
+                authViewModel.nuclearWipe()
+                Toast.makeText(context, "Kill switch executed. Vault destroyed.", Toast.LENGTH_SHORT).show()
+                onNuclearWipeComplete()
+            }
         )
     }
 }
