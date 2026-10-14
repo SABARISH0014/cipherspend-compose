@@ -87,7 +87,7 @@ fun ManualEntryScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val categories = listOf("Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Others")
+    val categories = listOf("Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Cash", "Transaction", "Others")
     val types = listOf("UPI", "Card", "Cash", "Bank Transfer")
 
     fun saveTransaction() {

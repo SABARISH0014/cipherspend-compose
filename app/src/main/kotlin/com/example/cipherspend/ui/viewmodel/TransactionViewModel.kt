@@ -130,6 +130,11 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
     init {
         refreshForecast()
+        viewModelScope.launch {
+            rawTransactions.collect {
+                refreshForecast()
+            }
+        }
     }
 
     fun selectPreviousMonth() {

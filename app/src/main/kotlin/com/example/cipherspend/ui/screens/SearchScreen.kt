@@ -90,7 +90,7 @@ fun SearchScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     var showDateRangePicker by remember { mutableStateOf(false) }
 
-    val filterChips = listOf("All", "Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Others")
+    val filterChips = listOf("All", "Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Cash", "Transaction", "Others")
     val typeChips = listOf("All", "UPI", "Card", "Cash", "Bank Transfer")
 
     var activeFilterCount = 0

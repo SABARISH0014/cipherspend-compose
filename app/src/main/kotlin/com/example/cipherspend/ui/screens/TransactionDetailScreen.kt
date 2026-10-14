@@ -152,7 +152,7 @@ fun TransactionDetailScreen(
     var isEditingMerchant by remember { mutableStateOf(false) }
     var editedMerchantName by remember { mutableStateOf("") }
 
-    val categories = listOf("Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Others")
+    val categories = listOf("Food & Dining", "Shopping", "Bills & Utilities", "Travel", "Investment", "Cash", "Transaction", "Others")
 
     LaunchedEffect(transactionId) {
         val found = viewModel.getTransactionById(transactionId)

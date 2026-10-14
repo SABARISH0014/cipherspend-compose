@@ -74,6 +74,12 @@ interface TransactionDao {
     @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE amount = :amount AND abs(timestamp - :timestamp) <= :windowMs)")
     suspend fun hasFuzzyAmountMatch(amount: Double, timestamp: Long, windowMs: Long = 3_600_000L): Boolean
 
+    @Query("SELECT * FROM transactions WHERE category = :category")
+    suspend fun getTransactionsByCategory(category: String): List<TransactionEntity>
+
+    @Query("UPDATE transactions SET category = :category, type = :type WHERE hash = :hash")
+    suspend fun updateCategoryAndTypeByHash(hash: String, category: String, type: String): Int
+
     suspend fun existsSimilarTransaction(
         body: String,
         amount: Double,
@@ -88,3 +94,4 @@ interface TransactionDao {
         return false
     }
 }
+

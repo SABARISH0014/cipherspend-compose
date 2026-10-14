@@ -154,17 +154,45 @@ object SmsParser {
     }
 
     fun extractMerchant(body: String): String {
+        val lower = body.lowercase()
+        // Known prominent merchant fast lookup for clean UI display
+        when {
+            lower.contains("swiggy instamart") -> return "Swiggy Instamart"
+            lower.contains("swiggy") -> return "Swiggy"
+            lower.contains("zomato") -> return "Zomato"
+            lower.contains("uber") -> return "Uber"
+            lower.contains("ola") -> return "Ola"
+            lower.contains("rapido") -> return "Rapido"
+            lower.contains("amazon") -> return "Amazon"
+            lower.contains("flipkart") -> return "Flipkart"
+            lower.contains("myntra") -> return "Myntra"
+            lower.contains("meesho") -> return "Meesho"
+            lower.contains("zepto") -> return "Zepto"
+            lower.contains("blinkit") -> return "Blinkit"
+            lower.contains("bigbasket") -> return "BigBasket"
+            lower.contains("mcdonald") -> return "McDonald's"
+            lower.contains("kfc") -> return "KFC"
+            lower.contains("domino") -> return "Domino's"
+            lower.contains("pizza hut") -> return "Pizza Hut"
+            lower.contains("starbucks") -> return "Starbucks"
+            lower.contains("airtel") -> return "Airtel"
+            lower.contains("jio") -> return "Jio"
+            lower.contains("zerodha") -> return "Zerodha"
+            lower.contains("groww") -> return "Groww"
+            lower.contains("irctc") -> return "IRCTC"
+        }
+
         val matcher = MERCHANT_REGEX.matcher(body)
         if (matcher.find()) {
             var name = matcher.group(1)?.trim() ?: ""
-            name = name.split("\\s+(?:on|at|from|via|successful|ref|refno|txn)(?:\\s+|$)".toRegex(RegexOption.IGNORE_CASE))[0]
+            name = name.split("\\s+(?:on|at|from|via|successful|ref|refno|txn|dated|bal|avl|inr|rs)(?:\\s+|$)".toRegex(RegexOption.IGNORE_CASE))[0]
             name = name.replace("[.\\-_]+$".toRegex(), "").trim()
-            if (name.isNotEmpty()) return name
+            if (name.isNotEmpty() && name.length <= 40) return name
         }
 
         val vpaMatcher = VPA_REGEX.matcher(body)
         if (vpaMatcher.find()) {
-            return vpaMatcher.group(1) ?: "Unknown"
+            return vpaMatcher.group(1) ?: "Unknown Merchant"
         }
 
         if (body.contains("atm", ignoreCase = true)) return "ATM"
@@ -172,10 +200,38 @@ object SmsParser {
     }
 
     fun determineType(lowerBody: String): String {
+        // 1. UPI Payment
         if (UPI_REGEX.matcher(lowerBody).find()) return "UPI"
-        if (lowerBody.contains("card") || lowerBody.contains("visa") || lowerBody.contains("mastercard")) return "Card"
-        if (lowerBody.contains("atm") || lowerBody.contains("cash")) return "Cash"
-        return "Bank Transfer"
+
+        // 2. Card Payment
+        if (lowerBody.contains("card") || lowerBody.contains("visa") ||
+            lowerBody.contains("mastercard") || lowerBody.contains("rupay") ||
+            lowerBody.contains("pos") || lowerBody.contains("credit card") ||
+            lowerBody.contains("debit card")
+        ) return "Card"
+
+        // 3. ATM / Cash Withdrawal (Strictly verified)
+        val isAtmOrCashWithdrawal = (lowerBody.contains("atm") ||
+                lowerBody.contains("cash withdrawal") ||
+                lowerBody.contains("withdrawn cash") ||
+                lowerBody.contains("cash w/d") ||
+                Regex("""\b(withdrew|withdrawn)\s+(?:rs\.?|inr|₹)?\s*\d+""").containsMatchIn(lowerBody)) &&
+                !lowerBody.contains("cash limit") &&
+                !lowerBody.contains("cashback") &&
+                !lowerBody.contains("cash back") &&
+                !lowerBody.contains("available cash")
+
+        if (isAtmOrCashWithdrawal) return "Cash"
+
+        // 4. Bank Transfer / Account Debit
+        if (lowerBody.contains("neft") || lowerBody.contains("rtgs") ||
+            lowerBody.contains("imps") || lowerBody.contains("transfer") ||
+            lowerBody.contains("trf") || lowerBody.contains("debited") ||
+            lowerBody.contains("netbanking") || lowerBody.contains("a/c") ||
+            lowerBody.contains("account")
+        ) return "Bank Transfer"
+
+        return "Other"
     }
 
     fun generateHash(sender: String, body: String, timestamp: Long): String {

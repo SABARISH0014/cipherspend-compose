@@ -33,7 +33,7 @@ class PredictionService private constructor(private val context: Context) {
     private var cachedOutputBuffer: Array<FloatArray>? = null
     private var vocab: Map<String, Int> = emptyMap()
     private var labels: List<String> = emptyList()
-    private var sequenceLength: Int = 20
+    private var sequenceLength: Int = 60
 
     init {
         loadModel()
@@ -102,74 +102,189 @@ class PredictionService private constructor(private val context: Context) {
         }
     }
 
-    fun predictCategory(text: String): String = synchronized(inferenceLock) {
-        val activeInterpreter = interpreter ?: return fallbackCategorize(text)
-        if (labels.isEmpty()) return fallbackCategorize(text)
-
-        try {
-            val inputFeatures = tokenizeAndPad(text, sequenceLength)
-            val inBuf = cachedInputBuffer ?: ByteBuffer.allocateDirect(4 * sequenceLength).order(ByteOrder.nativeOrder())
-            val outBuf = cachedOutputBuffer ?: Array(1) { FloatArray(labels.size) }
-
-            inBuf.clear()
-            for (v in inputFeatures) {
-                inBuf.putFloat(v)
-            }
-            inBuf.rewind()
-
-            activeInterpreter.run(inBuf, outBuf)
-
-            val probabilities = outBuf[0]
-            var bestIdx = 0
-            var maxProb = -1.0f
-            for (i in probabilities.indices) {
-                if (probabilities[i] > maxProb) {
-                    maxProb = probabilities[i]
-                    bestIdx = i
-                }
-            }
-
-            val predicted = if (bestIdx in labels.indices) labels[bestIdx] else "Others"
-            val result = if (predicted == "Others" || maxProb < 0.20f) {
-                val fallback = fallbackCategorize(text)
-                if (fallback != "Others") fallback else predicted
-            } else {
-                predicted
-            }
-            return result
-        } catch (e: Throwable) {
-            Log.e("PredictionService", "Error during inference: ${e.message}")
-            return fallbackCategorize(text)
+    private fun softmax(logits: FloatArray): FloatArray {
+        val maxLogit = logits.maxOrNull() ?: 0f
+        var sum = 0.0
+        val exps = DoubleArray(logits.size)
+        for (i in logits.indices) {
+            val exp = kotlin.math.exp((logits[i] - maxLogit).toDouble())
+            exps[i] = exp
+            sum += exp
         }
+        return FloatArray(logits.size) { (exps[it] / sum).toFloat() }
     }
 
-    private fun fallbackCategorize(text: String): String {
+    /**
+     * Deterministic, high-precision keyword classification for Indian banking/fintech merchants.
+     */
+    fun classifyByKeywords(text: String): String? {
         val lower = text.lowercase()
-        return when {
-            lower.contains("food") || lower.contains("swiggy") || lower.contains("zomato") ||
-                    lower.contains("cafe") || lower.contains("restaurant") || lower.contains("dine") ||
-                    lower.contains("pizza") || lower.contains("burger") || lower.contains("starbucks") ||
-                    lower.contains("blinkit") || lower.contains("zepto") || lower.contains("instamart") -> "Food & Dining"
 
-            lower.contains("uber") || lower.contains("ola") || lower.contains("rapido") ||
-                    lower.contains("irctc") || lower.contains("flight") || lower.contains("fuel") ||
-                    lower.contains("petrol") || lower.contains("metro") || lower.contains("travel") -> "Travel"
+        // 1. Food & Dining
+        if (lower.contains("swiggy") || lower.contains("zomato") || lower.contains("mcdonald") ||
+            lower.contains("mcd") || lower.contains("kfc") || lower.contains("burger king") ||
+            lower.contains("domino") || lower.contains("pizza hut") || lower.contains("subway") ||
+            lower.contains("starbucks") || lower.contains("cafe") || lower.contains("ccd") ||
+            lower.contains("chai point") || lower.contains("barbeque nation") || lower.contains("haldiram") ||
+            lower.contains("blinkit") || lower.contains("zepto") || lower.contains("instamart") ||
+            lower.contains("bigbasket") || lower.contains("dunzo") || lower.contains("faasos") ||
+            lower.contains("behrouz") || lower.contains("eatclub") || lower.contains("restaurant") ||
+            lower.contains("dining") || lower.contains("bakery") || lower.contains("sweets") ||
+            lower.contains("food") || lower.contains("snacks") || lower.contains("dine") ||
+            lower.contains("canteen") || lower.contains("mess") || lower.contains("biryani") ||
+            lower.contains("kitchen")
+        ) {
+            return "Food & Dining"
+        }
 
-            lower.contains("amazon") || lower.contains("flipkart") || lower.contains("myntra") ||
-                    lower.contains("zara") || lower.contains("mall") || lower.contains("retail") ||
-                    lower.contains("shop") -> "Shopping"
+        // 2. Shopping
+        if (lower.contains("amazon") || lower.contains("flipkart") || lower.contains("myntra") ||
+            lower.contains("meesho") || lower.contains("nykaa") || lower.contains("ajio") ||
+            lower.contains("tata cliq") || lower.contains("reliance digital") || lower.contains("croma") ||
+            lower.contains("vijay sales") || lower.contains("zara") || lower.contains("h&m") ||
+            lower.contains("westside") || lower.contains("pantaloons") || lower.contains("max fashion") ||
+            lower.contains("decathlon") || lower.contains("ikea") || lower.contains("retail") ||
+            lower.contains("mall") || lower.contains("mart") || lower.contains("superstore") ||
+            lower.contains("hypermarket") || lower.contains("clothing") || lower.contains("footwear") ||
+            lower.contains("lenskart") || lower.contains("purplle") || lower.contains("zudio") ||
+            lower.contains("shop") || lower.contains("store")
+        ) {
+            return "Shopping"
+        }
 
-            lower.contains("bill") || lower.contains("recharge") || lower.contains("electricity") ||
-                    lower.contains("airtel") || lower.contains("jio") || lower.contains("broadband") ||
-                    lower.contains("water") || lower.contains("gas") -> "Bills & Utilities"
+        // 3. Travel & Transit
+        if (lower.contains("uber") || lower.contains("ola") || lower.contains("rapido") ||
+            lower.contains("makemytrip") || lower.contains("yatra") || lower.contains("goibibo") ||
+            lower.contains("cleartrip") || lower.contains("easemytrip") || lower.contains("irctc") ||
+            lower.contains("railways") || lower.contains("redbus") || lower.contains("abhibus") ||
+            lower.contains("indigo") || lower.contains("air india") || lower.contains("spicejet") ||
+            lower.contains("akasa") || lower.contains("vistara") || lower.contains("flight") ||
+            lower.contains("petrol") || lower.contains("fuel") || lower.contains("diesel") ||
+            lower.contains("indianoil") || lower.contains("iocl") || lower.contains("hpcl") ||
+            lower.contains("bpcl") || lower.contains("shell") || lower.contains("toll") ||
+            lower.contains("fastag") || lower.contains("metro") || lower.contains("auto") ||
+            lower.contains("cab") || lower.contains("taxi") || lower.contains("parking") ||
+            lower.contains("travel")
+        ) {
+            return "Travel"
+        }
 
-            lower.contains("zerodha") || lower.contains("groww") || lower.contains("mutual") ||
-                    lower.contains("stock") || lower.contains("sip") || lower.contains("invest") -> "Investment"
+        // 4. Bills & Utilities
+        if (lower.contains("airtel") || lower.contains("jio") || lower.contains("vi") ||
+            lower.contains("vodafone") || lower.contains("idea") || lower.contains("bsnl") ||
+            lower.contains("mtnl") || lower.contains("electricity") || lower.contains("power") ||
+            lower.contains("bescom") || lower.contains("tneb") || lower.contains("cesc") ||
+            lower.contains("tata power") || lower.contains("adani electricity") || lower.contains("discom") ||
+            lower.contains("water") || lower.contains("gas") || lower.contains("indane") ||
+            lower.contains("bharat gas") || lower.contains("hp gas") || lower.contains("piped gas") ||
+            lower.contains("broadband") || lower.contains("wifi") || lower.contains("dth") ||
+            lower.contains("tata play") || lower.contains("dishtv") || lower.contains("sun direct") ||
+            lower.contains("recharge") || lower.contains("utility") || lower.contains("bill") ||
+            lower.contains("postpaid") || lower.contains("landline") || lower.contains("insurance") ||
+            lower.contains("lic") || lower.contains("premium")
+        ) {
+            return "Bills & Utilities"
+        }
 
-            lower.contains("upi") || lower.contains("transfer") || lower.contains("sent") ||
-                    lower.contains("paid") -> "Transaction"
+        // 5. Investment
+        if (lower.contains("zerodha") || lower.contains("groww") || lower.contains("angelone") ||
+            lower.contains("upstox") || lower.contains("coin") || lower.contains("kuvera") ||
+            lower.contains("indmoney") || lower.contains("paytm money") || lower.contains("mutual fund") ||
+            lower.contains("sip") || lower.contains("nav") || lower.contains("stock") ||
+            lower.contains("share") || lower.contains("demat") || lower.contains("nsdl") ||
+            lower.contains("cdsl") || lower.contains("fixed deposit") || lower.contains("recurring deposit") ||
+            lower.contains("ppf") || lower.contains("nps") || lower.contains("sovereign gold") ||
+            lower.contains("sgb") || lower.contains("smallcase") || lower.contains("invest")
+        ) {
+            return "Investment"
+        }
 
-            else -> "Others"
+        // 6. ATM / Cash Withdrawal (Strictly verified)
+        val isAtmCash = (lower.contains("atm") ||
+                lower.contains("cash withdrawal") ||
+                lower.contains("withdrawn cash") ||
+                lower.contains("cash w/d") ||
+                Regex("""\b(withdrew|withdrawn)\s+(?:rs\.?|inr|₹)?\s*\d+""").containsMatchIn(lower)) &&
+                !lower.contains("cash limit") &&
+                !lower.contains("cashback") &&
+                !lower.contains("cash back")
+
+        if (isAtmCash) {
+            return "Cash"
+        }
+
+        return null
+    }
+
+    fun predictCategory(text: String): String = synchronized(inferenceLock) {
+        // Step 1: Check high-precision keyword / merchant rules first
+        val keywordMatch = classifyByKeywords(text)
+        if (keywordMatch != null) {
+            return keywordMatch
+        }
+
+        // Step 2: Machine Learning Model Inference with Softmax
+        val activeInterpreter = interpreter
+        if (activeInterpreter != null && labels.isNotEmpty()) {
+            try {
+                val inputFeatures = tokenizeAndPad(text, sequenceLength)
+                val inBuf = cachedInputBuffer ?: ByteBuffer.allocateDirect(4 * sequenceLength).order(ByteOrder.nativeOrder())
+                val outBuf = cachedOutputBuffer ?: Array(1) { FloatArray(labels.size) }
+
+                inBuf.clear()
+                for (v in inputFeatures) {
+                    inBuf.putFloat(v)
+                }
+                inBuf.rewind()
+
+                activeInterpreter.run(inBuf, outBuf)
+
+                val logits = outBuf[0]
+                val probs = softmax(logits)
+
+                var bestIdx = 0
+                var maxProb = -1.0f
+                for (i in probs.indices) {
+                    if (probs[i] > maxProb) {
+                        maxProb = probs[i]
+                        bestIdx = i
+                    }
+                }
+
+                val predicted = if (bestIdx in labels.indices) labels[bestIdx] else "Others"
+
+                // CRITICAL SANITY CHECK:
+                // Never allow generic UPI/card/debit transactions to be labeled as "Cash"
+                // unless actual cash withdrawal intent is confirmed in the SMS.
+                val lower = text.lowercase()
+                val isGenuineCash = (lower.contains("atm") || lower.contains("cash withdrawal") || lower.contains("withdrawn cash")) &&
+                        !lower.contains("cash limit") && !lower.contains("cashback")
+
+                if (predicted == "Cash" && !isGenuineCash) {
+                    return if (lower.contains("upi") || lower.contains("transfer") || lower.contains("paid") || lower.contains("sent") || lower.contains("debited")) {
+                        "Transaction"
+                    } else {
+                        "Others"
+                    }
+                }
+
+                // Accept high-confidence predictions that are not noise
+                if (maxProb >= 0.40f && predicted != "Others" && predicted != "Ignore" && predicted != "Spam" && predicted != "Uncategorized") {
+                    return predicted
+                }
+            } catch (e: Throwable) {
+                Log.e("PredictionService", "Error during ML inference: ${e.message}")
+            }
+        }
+
+        // Step 3: Default fallback for general transactions
+        val lower = text.lowercase()
+        return if (lower.contains("upi") || lower.contains("transfer") || lower.contains("paid") ||
+            lower.contains("sent") || lower.contains("debited") || lower.contains("spent") || lower.contains("txn")
+        ) {
+            "Transaction"
+        } else {
+            "Others"
         }
     }
 

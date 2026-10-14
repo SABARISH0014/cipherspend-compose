@@ -141,6 +141,13 @@ fun DashboardScreen(
         }
     }
 
+    // Immediately refresh forecast and UI when sync completes
+    androidx.compose.runtime.LaunchedEffect(syncProgress.isSyncing) {
+        if (!syncProgress.isSyncing) {
+            viewModel.refreshForecast()
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->

@@ -74,8 +74,13 @@ object SmsSyncManager {
             )
 
             var scanned = 0
-            val candidateTransactions = mutableListOf<TransactionEntity>()
+            var totalFound = 0
+            var insertedCount = 0
+            val batchBuffer = mutableListOf<TransactionEntity>()
             var latestTimestamp = lastSyncTime
+
+            // Self-healing: Reclassify any existing transactions falsely marked as "Cash"
+            reclassifyLegacyCashTransactions(context)
 
             cursor?.use { c ->
                 val addressIdx = c.getColumnIndex(Telephony.Sms.ADDRESS)
@@ -84,7 +89,6 @@ object SmsSyncManager {
                 val subIdIdx = c.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
 
                 while (c.moveToNext()) {
-                    if (scanned >= 1000) break
                     scanned++
                     val sender = if (addressIdx != -1) c.getString(addressIdx) ?: "Unknown" else "Unknown"
                     val body = if (bodyIdx != -1) c.getString(bodyIdx) ?: "" else ""
@@ -119,7 +123,19 @@ object SmsSyncManager {
                                     timestamp = tx.timestamp
                                 )
                                 if (!isDup) {
-                                    candidateTransactions.add(tx)
+                                    batchBuffer.add(tx)
+                                    totalFound++
+
+                                    if (fullRescan) {
+                                        db.transactionDao().updateCategoryAndTypeByHash(tx.hash, tx.category, tx.type)
+                                    }
+
+                                    // Batch insert into Room in chunks of 50 to maintain constant memory and update UI progressively
+                                    if (batchBuffer.size >= 50) {
+                                        val insertedIds = db.transactionDao().insertAll(batchBuffer)
+                                        insertedCount += insertedIds.count { it != -1L }
+                                        batchBuffer.clear()
+                                    }
                                 }
                             }
                         }
@@ -127,27 +143,24 @@ object SmsSyncManager {
                         Log.w(TAG, "Error parsing message #$scanned: ${e.message}")
                     }
 
-                    if (scanned % 50 == 0) {
+                    if (scanned % 25 == 0) {
                         _syncState.value = SyncProgress(
                             isSyncing = true,
                             totalScanned = scanned,
-                            transactionsFound = candidateTransactions.size
+                            transactionsFound = totalFound
                         )
                     }
                 }
             }
 
-            var insertedCount = 0
-            if (candidateTransactions.isNotEmpty()) {
-                // Chunk insertions to prevent SQLite bind variable limit exceptions
-                candidateTransactions.chunked(100).forEach { batch ->
-                    val insertedIds = db.transactionDao().insertAll(batch)
-                    insertedCount += insertedIds.count { it != -1L }
-                }
-                Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found ${candidateTransactions.size} transactions, inserted $insertedCount new rows.")
-            } else {
-                Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found 0 new transactions.")
+            // Flush remaining transactions in buffer
+            if (batchBuffer.isNotEmpty()) {
+                val insertedIds = db.transactionDao().insertAll(batchBuffer)
+                insertedCount += insertedIds.count { it != -1L }
+                batchBuffer.clear()
             }
+
+            Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found $totalFound transactions, inserted $insertedCount new rows.")
 
             if (latestTimestamp > 0) {
                 prefs.edit().putLong("last_sms_sync_timestamp", latestTimestamp).apply()
@@ -158,7 +171,7 @@ object SmsSyncManager {
             _syncState.value = SyncProgress(
                 isSyncing = false,
                 totalScanned = scanned,
-                transactionsFound = candidateTransactions.size
+                transactionsFound = totalFound
             )
 
             return@withContext insertedCount
@@ -171,6 +184,38 @@ object SmsSyncManager {
             return@withContext 0
         } finally {
             isSyncRunning.set(false)
+        }
+    }
+
+    /**
+     * Self-healing migration for previously scanned messages that were erroneously
+     * tagged as "Cash" category due to unanchored substring matching.
+     */
+    suspend fun reclassifyLegacyCashTransactions(context: Context) {
+        try {
+            val db = DatabaseProvider.getDatabase(context)
+            val predictionService = PredictionService.getInstance(context)
+            val cashTxList = db.transactionDao().getTransactionsByCategory("Cash")
+            for (tx in cashTxList) {
+                val lower = tx.body.lowercase()
+                val isGenuineCash = (lower.contains("atm") ||
+                        lower.contains("cash withdrawal") ||
+                        lower.contains("withdrawn cash") ||
+                        lower.contains("cash w/d") ||
+                        Regex("""\b(withdrew|withdrawn)\s+(?:rs\.?|inr|₹)?\s*\d+""").containsMatchIn(lower)) &&
+                        !lower.contains("cash limit") &&
+                        !lower.contains("cashback") &&
+                        !lower.contains("cash back") &&
+                        !lower.contains("available cash")
+
+                if (!isGenuineCash) {
+                    val newCategory = predictionService.predictCategory(tx.body)
+                    val newType = SmsParser.determineType(lower)
+                    db.transactionDao().update(tx.copy(category = newCategory, type = newType))
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to reclassify legacy cash transactions: ${e.message}")
         }
     }
 }
