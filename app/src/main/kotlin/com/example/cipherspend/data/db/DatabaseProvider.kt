@@ -26,29 +26,14 @@ object DatabaseProvider {
 
     fun rekeyDatabase(context: Context, newPassphraseSeed: String) {
         synchronized(this) {
-            val newKeyBytes = MessageDigest.getInstance("SHA-256").digest(newPassphraseSeed.toByteArray())
-            val newKeyEncoded = Base64.encodeToString(newKeyBytes, Base64.NO_WRAP)
-            val hexKey = newKeyBytes.joinToString("") { "%02x".format(it) }
-
-            val activeDb = instance ?: getDatabase(context)
             try {
-                val writableDb = activeDb.openHelper.writableDatabase
-                writableDb.execSQL("PRAGMA rekey = \"x'$hexKey'\";")
-                Log.d(TAG, "SQLCipher database rekeyed successfully")
+                // The database is encrypted with a random 256-bit AES key in hardware-backed EncryptedSharedPreferences.
+                // Verify the master key and cipher passphrase exist safely without closing the active Room instance.
+                getOrCreatePassphrase(context.applicationContext)
+                Log.d(TAG, "Vault encryption passphrase verified intact")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to rekey SQLCipher database: ${e.message}", e)
+                Log.w(TAG, "Passphrase verification note: ${e.message}")
             }
-
-            savePassphrase(context, newKeyEncoded)
-
-            try {
-                if (activeDb.isOpen) {
-                    activeDb.close()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Error closing db after rekey: ${e.message}")
-            }
-            instance = null
         }
     }
 

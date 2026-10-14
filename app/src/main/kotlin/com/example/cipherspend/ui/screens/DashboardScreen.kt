@@ -133,6 +133,7 @@ fun DashboardScreen(
     // Immediately refresh forecast and UI when sync completes
     androidx.compose.runtime.LaunchedEffect(syncProgress.isSyncing) {
         if (!syncProgress.isSyncing) {
+            viewModel.syncDemoModeState()
             viewModel.refreshForecast()
         }
     }
@@ -143,6 +144,12 @@ fun DashboardScreen(
         val granted = perms[Manifest.permission.RECEIVE_SMS] == true &&
                 perms[Manifest.permission.READ_SMS] == true
         hasSmsPermission = granted
+        if (granted) {
+            viewModel.exitDemoMode()
+            coroutineScope.launch {
+                SmsSyncManager.syncInbox(context, fullRescan = true)
+            }
+        }
     }
 
     LazyColumn(

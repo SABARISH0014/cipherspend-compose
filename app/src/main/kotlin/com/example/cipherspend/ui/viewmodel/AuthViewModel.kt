@@ -107,7 +107,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         if (newMpin.length != 4 || !newMpin.all { it.isDigit() }) return false
         val hash = hashString(newMpin)
         prefs.edit().putString("user_mpin_hash", hash).apply()
-        DatabaseProvider.rekeyDatabase(getApplication(), newMpin)
         return true
     }
 

@@ -592,9 +592,8 @@ fun ProfileEditScreen(
                         }
                         val success = authViewModel.changeMpin(newMpin)
                         if (success) {
-                            transactionViewModel.onDatabaseReset()
                             showChangeMpinDialog = false
-                            CipherSnackbarManager.showMessage("MPIN updated and vault re-keyed")
+                            CipherSnackbarManager.showMessage("MPIN updated successfully")
                         } else {
                             mpinError = "Failed to update MPIN"
                         }

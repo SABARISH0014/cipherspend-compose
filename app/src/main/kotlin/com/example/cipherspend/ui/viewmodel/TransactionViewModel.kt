@@ -196,7 +196,12 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         _endDate.value = null
     }
 
+    fun syncDemoModeState() {
+        _isDemoMode.value = generalPrefs.getBoolean("is_demo_mode", false)
+    }
+
     fun refreshForecast() {
+        syncDemoModeState()
         viewModelScope.launch(Dispatchers.IO) {
             val fc = predictionService.getSpendingForecast(_selectedMonth.value)
             _forecast.value = fc
