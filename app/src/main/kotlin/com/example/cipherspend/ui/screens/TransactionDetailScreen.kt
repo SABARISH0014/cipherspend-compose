@@ -269,7 +269,7 @@ fun TransactionDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "CIPHER RECEIPT",
+                        text = "TRANSACTION RECEIPT",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = CyberCyan,
                             fontWeight = FontWeight.Bold,
@@ -550,7 +550,7 @@ fun TransactionDetailScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Only show NER Match Editor button when advanced_settings == true
+            // Only show Smart Matching Rule editor button when advanced_settings == true
             if (advancedSettings && onNavigateToTraining != null) {
                 Button(
                     onClick = { onNavigateToTraining(currentTx.body, currentTx.sender) },
@@ -563,7 +563,7 @@ fun TransactionDetailScreen(
                         contentColor = PurpleGlow
                     )
                 ) {
-                    Text("EDIT MATCHING RULES", fontWeight = FontWeight.SemiBold)
+                    Text("Edit Smart Matching Rule", fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
             }

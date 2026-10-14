@@ -19,12 +19,15 @@
 -keepattributes Signature
 -keepattributes *Annotation*
 -keep class com.google.gson.** { *; }
+-keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
 -keepclassmembers class * extends com.google.gson.reflect.TypeToken { *; }
 
 # 4. Room Database Entities, DAOs, & SQLite Architecture
 -keep class androidx.room.** { *; }
 -dontwarn androidx.room.**
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class * { *; }
 -keep class com.example.cipherspend.data.** { *; }
 -keepclassmembers class com.example.cipherspend.data.** { *; }
 -keepclassmembers class * {
@@ -36,3 +39,7 @@
 -keepattributes EnclosingMethod,InnerClasses
 -dontwarn kotlinx.coroutines.**
 -keepclassmembers class kotlinx.coroutines.** { *; }
+
+# 6. Google Tink / AndroidX Security Crypto
+-dontwarn javax.annotation.**
+

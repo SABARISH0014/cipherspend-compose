@@ -106,33 +106,8 @@ fun DashboardScreen(
         )
     }
 
-    var detectedUpiApp by remember { mutableStateOf<String?>(null) }
     var showPrivacyDisclosure by remember { mutableStateOf(false) }
     var pendingPermissionAction by remember { mutableStateOf<String?>(null) }
-
-    // Check for recent UPI app on composition and resume
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                val detected = com.example.cipherspend.MainActivity.checkRecentUpiApp(context)
-                if (detected != null) {
-                    detectedUpiApp = detected
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        val detected = com.example.cipherspend.MainActivity.checkRecentUpiApp(context)
-        if (detected != null) {
-            detectedUpiApp = detected
-        }
-    }
 
     // Auto-sync whenever permission is granted
     androidx.compose.runtime.LaunchedEffect(hasSmsPermission) {
@@ -495,182 +470,154 @@ fun DashboardScreen(
         }
     }
 
-    // Smart Prompt AlertDialog (Task 1)
-    if (detectedUpiApp != null) {
-        AlertDialog(
-            onDismissRequest = {
-                prefs.edit().putLong("last_smart_prompt_time", System.currentTimeMillis()).apply()
-                detectedUpiApp = null
-            },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Sensors,
-                        contentDescription = null,
-                        tint = CyberCyan,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Smart Prompt",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-            },
-            text = {
-                Text(
-                    text = "We noticed you recently opened $detectedUpiApp. Would you like to log an expense?",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextSecondary,
-                        lineHeight = 20.sp
-                    )
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        prefs.edit().putLong("last_smart_prompt_time", System.currentTimeMillis()).apply()
-                        detectedUpiApp = null
-                        onNavigateToManualEntry()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = "Log Expense",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        prefs.edit().putLong("last_smart_prompt_time", System.currentTimeMillis()).apply()
-                        detectedUpiApp = null
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, TextMuted)
-                ) {
-                    Text(
-                        text = "Dismiss",
-                        color = TextSecondary
-                    )
-                }
-            },
-            containerColor = Color(0xFF131B2A),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-        )
-    }
-
-    // Google Play Prominent Disclosure Dialog (Task 5)
-    if (showPrivacyDisclosure) {
-        AlertDialog(
-            onDismissRequest = {
+    // Google Play Prominent Disclosure Dialog (Step 5)
+    if (showPrivacyDisclosure && pendingPermissionAction != null) {
+        ProminentDisclosureDialog(
+            action = pendingPermissionAction ?: "SMS",
+            onConfirm = {
+                val action = pendingPermissionAction
                 showPrivacyDisclosure = false
                 pendingPermissionAction = null
-            },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = null,
-                        tint = NeonEmerald,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Privacy & Permission Disclosure",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold
+                if (action == "SMS") {
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.RECEIVE_SMS,
+                            Manifest.permission.READ_SMS
                         )
                     )
+                } else if (action == "NOTIF") {
+                    try {
+                        context.startActivity(
+                            Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        )
+                    } catch (_: Exception) {}
                 }
             },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "CipherSpend accesses your incoming and historical bank SMS messages and UPI payment notifications solely to automatically log your expenses and categorize transactions.",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
-                            lineHeight = 20.sp
-                        )
+            onDismiss = {
+                showPrivacyDisclosure = false
+                pendingPermissionAction = null
+            }
+        )
+    }
+}
+
+@Composable
+fun ProminentDisclosureDialog(
+    action: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = NeonEmerald,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Google Play Prominent Disclosure",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
                     )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF0F1E33))
-                            .padding(12.dp)
-                    ) {
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "CipherSpend requires ${if (action == "SMS") "SMS permission" else "Notification Listener access"} to automate your offline personal expense tracking.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column {
                         Text(
-                            text = "100% Offline Guarantee: All parsing and AI inference happen locally on your device. Your SMS and notification data is encrypted with SQLCipher and is never uploaded, shared, or transmitted to any server.",
+                            text = "Data Accessed:",
+                            style = MaterialTheme.typography.bodySmall.copy(color = CyberCyan, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Incoming & historical bank SMS messages and UPI app payment notifications.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, lineHeight = 16.sp)
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "Purpose:",
+                            style = MaterialTheme.typography.bodySmall.copy(color = CyberCyan, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Solely to automatically extract transaction amounts, categories, and merchant names for your personal expense ledger.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, lineHeight = 16.sp)
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF0F1E33))
+                        .padding(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Zero-Knowledge Privacy Guarantee",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = NeonEmerald,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Text(
+                            text = "All parsing and AI inference happen 100% locally on your device. Zero financial or personal data is ever transmitted, shared, or uploaded to any external server.",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = CyberCyan,
-                                lineHeight = 18.sp,
-                                fontWeight = FontWeight.Medium
+                                color = TextPrimary,
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp
                             )
                         )
                     }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val action = pendingPermissionAction
-                        showPrivacyDisclosure = false
-                        pendingPermissionAction = null
-                        if (action == "SMS") {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.RECEIVE_SMS,
-                                    Manifest.permission.READ_SMS
-                                )
-                            )
-                        } else if (action == "NOTIF") {
-                            try {
-                                context.startActivity(
-                                    Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                )
-                            } catch (_: Exception) {}
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = "I Understand & Agree",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        showPrivacyDisclosure = false
-                        pendingPermissionAction = null
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, TextMuted)
-                ) {
-                    Text(
-                        text = "Decline",
-                        color = TextSecondary
-                    )
-                }
-            },
-            containerColor = Color(0xFF131B2A),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-        )
-    }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(
+                    text = "I Agree & Continue",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, TextMuted)
+            ) {
+                Text(
+                    text = "Decline",
+                    color = TextSecondary
+                )
+            }
+        },
+        containerColor = Color(0xFF131B2A),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+    )
 }
 
 @Composable

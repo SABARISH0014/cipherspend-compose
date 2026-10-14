@@ -1,13 +1,12 @@
 package com.example.cipherspend.ui.screens
 
-import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
-import android.os.Process
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.DeleteForever
@@ -110,9 +108,7 @@ fun SettingsScreen(
             prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
         )
     }
-    var smartPromptsEnabled by remember {
-        mutableStateOf(prefs.getBoolean("smart_prompt_enabled", false))
-    }
+
     var advancedSettingsEnabled by remember {
         mutableStateOf(prefs.getBoolean("advanced_settings", false))
     }
@@ -135,15 +131,7 @@ fun SettingsScreen(
         }
     }
 
-    fun hasUsageStatsPermission(): Boolean {
-        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
-        val mode = appOps.checkOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            Process.myUid(),
-            context.packageName
-        )
-        return mode == AppOpsManager.MODE_ALLOWED
-    }
+
 
     LazyColumn(
         modifier = Modifier
@@ -383,64 +371,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    // 2. Smart Prompts Toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = "Smart Prompts",
-                                tint = NeonEmerald,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Smart Prompts",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        color = TextPrimary,
-                                        fontSize = 15.sp
-                                    )
-                                )
-                                Text(
-                                    text = "Usage-aware instant transaction suggestions",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                )
-                            }
-                        }
-
-                        Switch(
-                            checked = smartPromptsEnabled,
-                            onCheckedChange = {
-                                if (it && !hasUsageStatsPermission()) {
-                                    Toast.makeText(context, "Please enable Usage Access for CipherSpend", Toast.LENGTH_LONG).show()
-                                    try {
-                                        context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                        })
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Could not open usage settings", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                                smartPromptsEnabled = it
-                                prefs.edit().putBoolean("smart_prompt_enabled", it).apply()
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = NeonEmerald,
-                                uncheckedThumbColor = TextMuted,
-                                uncheckedTrackColor = SurfaceDark
-                            )
-                        )
-                    }
-
-                    // 3. Advanced Settings Toggle
+                    // 2. Advanced Tools Toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -459,14 +390,14 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Advanced Settings",
+                                    text = "Advanced Tools",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         color = TextPrimary,
                                         fontSize = 15.sp
                                     )
                                 )
                                 Text(
-                                    text = "Enables manual sync and regex NER editor",
+                                    text = "Enable manual sync and smart rule editor",
                                     style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                                 )
                             }
@@ -522,7 +453,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Unrestricted Battery (OEM Reliability)",
+                                    text = "Background Reliability (Battery Optimization)",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         color = TextPrimary,
                                         fontSize = 15.sp
@@ -613,10 +544,10 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Zero-Knowledge Architecture Info
+        // Section: 100% Offline Privacy Info
         item {
             Text(
-                text = "Zero-Knowledge Architecture",
+                text = "100% Offline Privacy",
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = TextPrimary,
                     fontWeight = FontWeight.SemiBold
@@ -657,7 +588,7 @@ fun SettingsScreen(
                     ) {
                         Icon(imageVector = Icons.Default.DeleteForever, contentDescription = "Kill Switch", tint = DangerRed)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Factory Reset (Kill Switch)", color = DangerRed, fontWeight = FontWeight.SemiBold)
+                        Text("Delete Account & Data", color = DangerRed, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -676,9 +607,31 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Enter this secret key in Google Authenticator, Aegis, or 2FAS:",
+                        text = "Scan or tap to open in Google Authenticator, Aegis, or 2FAS, or copy the key below:",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
+
+                    // Open in Authenticator App Button (otpauth URI with default issuer account name)
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            try {
+                                val uri = Uri.parse("otpauth://totp/CipherSpend:CipherSpend%20User?secret=$candidateTotpSecret&issuer=CipherSpend")
+                                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                clipboardManager.setText(AnnotatedString(candidateTotpSecret))
+                                Toast.makeText(context, "Secret copied to clipboard. Open your Authenticator app manually.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, PurpleGlow.copy(alpha = 0.6f))
+                    ) {
+                        Text("Open Authenticator App", color = PurpleGlow, fontWeight = FontWeight.SemiBold)
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -799,7 +752,7 @@ fun SettingsScreen(
     if (showPurgeDialog) {
         AlertDialog(
             onDismissRequest = { showPurgeDialog = false },
-            title = { Text("Factory Reset Vault?", color = DangerRed) },
+            title = { Text("Delete Account & Data", color = DangerRed) },
             text = {
                 Text(
                     text = "This will permanently destroy the encrypted database (cipherspend_encrypted.db), wipe encryption keys from hardware keystore, and erase your MPIN, TOTP secret, and user profile.\n\nYou will be prompted for TOTP authorization next.",
@@ -814,7 +767,7 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
-                    Text("Authenticate & Wipe", color = Color.White)
+                    Text("Erase Everything", color = Color.White)
                 }
             },
             dismissButton = {

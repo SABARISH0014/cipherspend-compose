@@ -289,7 +289,7 @@ fun ProfileSetupScreen(
                     )
                 ) {
                     Text(
-                        text = "Save & Enter Vault",
+                        text = "Save & Continue",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp

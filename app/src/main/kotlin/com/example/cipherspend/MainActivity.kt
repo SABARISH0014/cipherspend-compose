@@ -1,6 +1,5 @@
 package com.example.cipherspend
 
-import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
@@ -81,8 +80,8 @@ class MainActivity : FragmentActivity() {
                                     popUpTo("startup") { inclusive = true }
                                 }
                             },
-                            onNavigateToVerification = {
-                                navController.navigate("verification") {
+                            onNavigateToProfileSetup = {
+                                navController.navigate("profile_setup") {
                                     popUpTo("startup") { inclusive = true }
                                 }
                             }
@@ -114,7 +113,9 @@ class MainActivity : FragmentActivity() {
                         MpinSetupScreen(
                             authViewModel = authViewModel,
                             onMpinConfigured = {
-                                navController.navigate("profile_setup")
+                                navController.navigate("main_scaffold") {
+                                    popUpTo(0) { inclusive = true }
+                                }
                             }
                         )
                     }
@@ -124,9 +125,7 @@ class MainActivity : FragmentActivity() {
                         ProfileSetupScreen(
                             transactionViewModel = transactionViewModel,
                             onProfileSaved = {
-                                navController.navigate("main_scaffold") {
-                                    popUpTo("verification") { inclusive = true }
-                                }
+                                navController.navigate("mpin_setup")
                             }
                         )
                     }
@@ -179,7 +178,7 @@ class MainActivity : FragmentActivity() {
                                 navController.navigate("profile_edit")
                             },
                             onNuclearWipeComplete = {
-                                navController.navigate("verification") {
+                                navController.navigate("profile_setup") {
                                     popUpTo(0) { inclusive = true }
                                 }
                             }
@@ -318,60 +317,4 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
-
-    companion object {
-        fun checkRecentUpiApp(context: Context): String? {
-            val prefs = context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
-            val isEnabled = prefs.getBoolean("smart_prompt_enabled", false)
-            if (!isEnabled) return null
-
-            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? android.app.AppOpsManager ?: return null
-            val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                appOps.unsafeCheckOpNoThrow(
-                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                    android.os.Process.myUid(),
-                    context.packageName
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                appOps.checkOpNoThrow(
-                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                    android.os.Process.myUid(),
-                    context.packageName
-                )
-            }
-            if (mode != android.app.AppOpsManager.MODE_ALLOWED) return null
-
-            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager ?: return null
-            val now = System.currentTimeMillis()
-            val fiveMinAgo = now - 5 * 60 * 1000L
-
-            val stats = usageStatsManager.queryUsageStats(
-                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
-                fiveMinAgo,
-                now
-            ) ?: return null
-
-            val upiApps = mapOf(
-                "com.google.android.apps.nbu.paisa.user" to "GPay",
-                "com.phonepe.app" to "PhonePe",
-                "net.one97.paytm" to "Paytm",
-                "in.org.npci.upiapp" to "BHIM",
-                "com.dreamplug.androidapp" to "Cred"
-            )
-
-            val lastPromptTime = prefs.getLong("last_smart_prompt_time", 0L)
-
-            val matchingStats = stats.filter { stat ->
-                upiApps.containsKey(stat.packageName) &&
-                stat.lastTimeUsed >= fiveMinAgo &&
-                stat.lastTimeUsed > lastPromptTime
-            }
-
-            val mostRecent = matchingStats.maxByOrNull { it.lastTimeUsed } ?: return null
-            return upiApps[mostRecent.packageName]
-        }
-    }
 }
-
-fun checkRecentUpiApp(context: Context): String? = MainActivity.checkRecentUpiApp(context)

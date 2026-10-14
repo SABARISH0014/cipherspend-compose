@@ -51,7 +51,7 @@ import kotlinx.coroutines.delay
 fun StartupScreen(
     authViewModel: AuthViewModel,
     onNavigateToUnlock: () -> Unit,
-    onNavigateToVerification: () -> Unit
+    onNavigateToProfileSetup: () -> Unit
 ) {
     // 2500ms boot delay before routing
     LaunchedEffect(Unit) {
@@ -59,7 +59,7 @@ fun StartupScreen(
         if (authViewModel.isConfigured.value) {
             onNavigateToUnlock()
         } else {
-            onNavigateToVerification()
+            onNavigateToProfileSetup()
         }
     }
 

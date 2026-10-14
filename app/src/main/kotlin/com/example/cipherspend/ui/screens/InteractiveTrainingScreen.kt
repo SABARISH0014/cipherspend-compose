@@ -216,7 +216,7 @@ fun InteractiveTrainingScreen(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Match Editor",
+                    text = "Smart Rule Editor",
                     style = MaterialTheme.typography.titleLarge.copy(
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold,
@@ -355,7 +355,7 @@ fun InteractiveTrainingScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Generated Regex Pattern",
+                                    text = "Matching Pattern",
                                     style = MaterialTheme.typography.labelSmall.copy(color = CyberCyan)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
