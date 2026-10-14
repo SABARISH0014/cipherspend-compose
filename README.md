@@ -1,139 +1,166 @@
 # 🛡️ CipherSpend
 
-![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-![Security](https://img.shields.io/badge/Security-Bank_Grade-green?style=for-the-badge)
+![Android](https://img.shields.io/badge/Android-API_26_to_35-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
+![SQLite SQLCipher](https://img.shields.io/badge/SQLite-SQLCipher_256--bit-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![TensorFlow Lite](https://img.shields.io/badge/TensorFlow_Lite-On--Device_NLP-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
+![Privacy](https://img.shields.io/badge/Privacy-100%25_Offline-success?style=for-the-badge)
 
-**CipherSpend** is a 100% offline, privacy-first personal finance tracker and intelligent SMS parser. Designed with a clean, modern, and user-friendly interface, it acts as a "Hybrid Vault," ensuring your financial data never leaves your device while providing automated expense tracking through advanced NLP parsing.
-
-Built exclusively for Android using **Flutter**, secured by **SQLCipher**, and guarded by a robust **TOTP + MPIN** authentication flow.
+**CipherSpend** is a 100% offline, privacy-first personal finance tracker and intelligent transaction parser built natively for Android using **Jetpack Compose**. Operating entirely on-device with zero cloud dependencies, CipherSpend acts as an encrypted personal vault—combining native SMS extraction, on-device TensorFlow Lite classification, and military-grade SQLCipher encryption.
 
 ---
 
 ## 📱 App Previews
 
-| Setup & Security | Main Dashboard | Interactive Training |
+| Initial Setup & Security | Modern Dashboard | Smart Rule Editor |
 |:---:|:---:|:---:|
 | ![Setup 1](screenshots/setup_screenshot_1.jpg)<br>![Setup 2](screenshots/setup_screenshot_2.jpg) | ![Dashboard](screenshots/dashboard_screenshot.jpg) | ![Training](screenshots/training_screenshot.jpg) |
-| *Bank-grade setup with TOTP* | *Clean, user-friendly Light Theme* | *Custom NER regex extraction* |
+| *Streamlined consumer onboarding & MPIN* | *Real-time spending velocity & budget alerts* | *Interactive token-based smart rule generator* |
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🔒 Core Security & Privacy
-- **100% Offline Architecture** — No cloud databases, no APIs, and absolutely zero telemetry. Your data is strictly device-bound.
-- **Hybrid Vault Authentication** — Employs a secure 4-digit MPIN for daily access, guarded by a mandatory TOTP (Google Authenticator) requirement for high-risk actions.
-- **SQLCipher Database Encryption** — All transactions and rules are stored in a fully encrypted, military-grade local SQLite database.
-- **Background Protection** — UI blurring and background state management to prevent shoulder-surfing and unauthorized access.
+### 🔒 100% Offline Privacy & Military-Grade Security
+- **Zero Cloud Dependence** — No servers, no remote APIs, and zero telemetry. Financial data remains exclusively within the physical device hardware.
+- **SQLCipher 256-bit AES Encryption** — All transactions, user configurations, and custom rules are sealed in an encrypted SQLite database using SQLCipher.
+- **Master MPIN & Biometrics** — Seamless daily access via 4-digit Master MPIN, hardware-backed Fingerprint, or Face Unlock using AndroidX Biometrics.
+- **Screen & Memory Protection** — Enforced `FLAG_SECURE` against screenshots, screen recording, and unauthorized task switch previews.
+- **High-Risk Guard with Opt-In TOTP** — Advanced Vault Mode (TOTP RFC 6238) pairs directly with Google Authenticator, Aegis, 2FAS, or Authy via standard `otpauth://` URIs, guarding sensitive actions like permanent data erasure.
 
-### 🧠 Intelligent Expense Tracking
-- **Automated SMS Parsing** — Runs locally to intercept and parse bank transaction SMS messages in real-time using native Android background receivers.
-- **Interactive Regex Training** — A custom Named Entity Recognition (NER) labeling interface. Users can select words in an SMS to dynamically generate custom regex rules for identifying 'Merchants' and 'Amounts'.
-- **Smart Categorization** — Built-in local prediction service to categorize expenses without cloud reliance.
+### ⚡ Streamlined Consumer Onboarding
+- **Zero-Friction Startup** — Replaces complex multi-step security flows with a friendly 3-step setup:
+  1. **Profile Setup** — Set user display name, monthly target budget, and monthly salary cycle day.
+  2. **MPIN & Biometric Setup** — Configure a 4-digit Master MPIN with optional biometric quick-unlock.
+  3. **Main Dashboard** — Ready to track expenses instantly.
 
-### 🎨 UI/UX Excellence
-- **Modern Light Theme** — A calming, trustworthy aesthetic designed to feel safe and professional, akin to modern banking or wellness apps.
-- **Glassmorphism Elements** — Beautiful blurred backdrop filters (`BackdropFilter`) to draw focus to critical actions like editing merchants or adjusting settings.
-- **Frictionless Navigation** — Cleanly organized dashboard with intuitive visual reports, search capabilities, and minimal clutter.
+### 🧠 On-Device NLP & Intelligent Transaction Parsing
+- **Automated Bank SMS Parsing** — Real-time transaction capture via native Android `BroadcastReceiver` supporting major banks (HDFC, SBI, ICICI, Axis, Kotak, etc.) and UPI services (Google Pay, PhonePe, Paytm, BHIM, CRED).
+- **On-Device TensorFlow Lite AI** — High-speed offline neural network inference (`cipherspend_model.tflite`) classifies transactions into 8 curated expense categories (*Food & Dining, Shopping, Bills & Utilities, Travel, Investment, Cash, etc.*) without latency or privacy trade-offs.
+- **Smart Rule Editor (Interactive NER)** — Visual token-based extraction tool allowing users to tap and label words (*Merchant, Amount, Ignore*) in unparsed SMS messages to dynamically generate regex matching patterns.
+- **Duplicate Detection & Deduplication** — Real-time cryptographic hashing prevents re-parsing duplicate SMS alerts.
+
+### 📊 Real-Time Financial Intelligence
+- **Spending Velocity & Cycle Tracking** — Dynamic calculation of monthly burn rate relative to elapsed salary cycle days.
+- **Predictive Budget Alerts** — Proactive native notifications when expenses approach 80% and 100% of your configured monthly threshold.
+- **Transaction Receipt View** — Detailed receipt screen featuring custom ticket clipping visuals, editable merchants, category reassignment, and raw SMS inspection with typewriter animation.
 
 ---
 
 ## 🛠 Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Framework** | Flutter (Dart) | Cross-platform UI framework |
-| **Database** | `sqflite_sqlcipher` | Encrypted local data persistence |
-| **Security** | `totp_authenticator` | Time-based One-Time Password generation |
-| **Storage** | `flutter_secure_storage` | Secure KeyStore/Keychain management for keys |
-| **Native Integration**| Kotlin (Android) | Background SMS receivers and services |
-| **Testing** | `integration_test` | End-to-end user flow testing |
+| Component | Technology | Description |
+|---|---|---|
+| **Platform** | Android Native (API 26 to API 35) | Optimized for modern Android versions up to Android 15 |
+| **Language** | Kotlin 2.0.21 | 100% native codebase with zero bridge overhead |
+| **UI Framework** | Jetpack Compose + Material 3 | Modern declarative UI, glassmorphic styling, and fluid animations |
+| **Architecture** | MVVM + Clean Architecture | Structured with ViewModel, StateFlow, Coroutines, and Repository patterns |
+| **Local Database** | Room 2.6.1 + SQLCipher 4.5.4 | 256-bit AES encrypted local persistence |
+| **Machine Learning** | TensorFlow Lite Support 0.4.4 | On-device NLP categorization model |
+| **Authentication** | AndroidX Biometric + RFC 6238 TOTP | Biometric prompt with hardware Keystore + HMAC-SHA1 TOTP |
+| **Background Processing** | Android Telephony + BroadcastReceiver | High-priority SMS capture and background inbox synchronization |
 
 ---
 
-## 🏗 Architecture
-
-CipherSpend utilizes a strict, offline-first service architecture to isolate UI from data processing and security layers:
+## 🏗 System Architecture
 
 ```text
-Device Hardware (SMS Inbox / KeyStore)
-    │
-    ▼
-┌──────────────────────────────────────────┐
-│  Native Layer (Android/Kotlin)           │
-│  - SmsBackgroundReceiver.kt              │
-│  - NotificationService.kt                │
-└──────────────────────────────────────────┘
-    │
-    ▼ (Method Channels / Bridge)
-┌──────────────────────────────────────────┐
-│  Flutter Services Layer                  │
-│  ├─ SmsBridge / SmsService               │
-│  ├─ ParserService (Regex extraction)     │
-│  ├─ TrainingService (Rule generation)    │
-│  ├─ VaultService (MPIN/TOTP handling)    │
-│  └─ DbService (SQLCipher Interface)      │
-└──────────────────────────────────────────┘
-    │
-    ▼ (State Management)
-┌──────────────────────────────────────────┐
-│  Flutter UI Layer                        │
-│  - Screens (Dashboard, Settings, Setup)  │
-│  - Widgets (HighRiskGuard, Shields)      │
-└──────────────────────────────────────────┘
+               ┌────────────────────────────────────────────────────────┐
+               │                Android System Events                   │
+               │   • SMS_RECEIVED Broadcast      • SMS Inbox Sync       │
+               └──────────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼
+               ┌────────────────────────────────────────────────────────┐
+               │                     Native Layer                       │
+               │   • SmsBackgroundReceiver.kt                           │
+               │   • NotificationService.kt                             │
+               │   • SmsSyncManager.kt (Inbox Batch Parser)             │
+               └──────────────────────────┬─────────────────────────────┘
+                                          │
+                        ┌─────────────────┴─────────────────┐
+                        ▼                                   ▼
+          ┌───────────────────────────┐       ┌───────────────────────────┐
+          │  Regex Pattern Extraction │       │  On-Device TFLite Engine  │
+          │  (SmsParser / CustomRule) │       │  (AiCategorizationService)│
+          └─────────────┬─────────────┘       └─────────────┬─────────────┘
+                        │                                   │
+                        └─────────────────┬─────────────────┘
+                                          ▼
+               ┌────────────────────────────────────────────────────────┐
+               │           Encrypted Data Layer (Room + SQLCipher)      │
+               │   • TransactionDao       • CustomRuleDao               │
+               │   • IgnoredHashDao       • DatabaseProvider (AES-256)  │
+               └──────────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼ StateFlow / Coroutines
+               ┌────────────────────────────────────────────────────────┐
+               │                   Presentation Layer                   │
+               │   • AuthViewModel        • TransactionViewModel        │
+               │   • Jetpack Compose Screens (Material 3 + Theme)       │
+               └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```text
-cipherspend-v1/
-│
-├── android/                         # Native Android Code
-│   └── app/src/main/
-│       ├── kotlin/com/example/cipherspend/
-│       │   ├── MainActivity.kt
-│       │   ├── NotificationService.kt
-│       │   └── SmsBackgroundReceiver.kt
-│       └── AndroidManifest.xml      # SMS and Background Permissions
-│
-├── assets/                          # Local Assets
-│   └── labels.json                  # Fallback offline ML/categorization labels
-│
-├── integration_test/                # E2E Tests
-│   └── app_flow_test.dart
-│
-└── lib/                             # Core Flutter Codebase
-    ├── main.dart                    # Entry point & global themes
-    │
-    ├── models/                      # Data Models
-    │   └── transaction_model.dart
-    │
-    ├── screens/                     # UI Views
-    │   ├── dashboard_screen.dart    # Main financial overview
-    │   ├── interactive_training_screen.dart # Regex NLP builder
-    │   ├── mpin_setup_screen.dart   # Security initialization
-    │   ├── settings_screen.dart     # App configurations
-    │   └── transaction_detail_screen.dart 
-    │
-    ├── services/                    # Business Logic
-    │   ├── ai_service.dart          # Local data categorization
-    │   ├── db_service.dart          # SQLCipher operations
-    │   ├── parser_service.dart      # SMS text extraction
-    │   ├── sms_bridge.dart          # Native communication
-    │   └── vault_service.dart       # TOTP & KeyStore security
-    │
-    ├── utils/                       # Shared Utilities
-    │   └── constants.dart
-    │
-    └── widgets/                     # Reusable UI Components
-        ├── high_risk_guard.dart     # TOTP interceptor widget
-        ├── offline_shield.dart      # UI state protector
-        └── restricted_settings_dialog.dart
+CipherSpend-v1/
+├── app/
+│   ├── build.gradle.kts                   # App-level dependencies, SDK 35, ProGuard & signing config
+│   ├── proguard-rules.pro                 # R8 optimization & SQLCipher/TFLite keep rules
+│   └── src/main/
+│       ├── AndroidManifest.xml            # Permissions, receivers, and services
+│       ├── assets/
+│       │   ├── cipherspend_model.tflite   # Quantized on-device categorization model
+│       │   ├── labels.json                # Category taxonomy mapping
+│       │   └── vocab.json                 # NLP tokenizer vocabulary
+│       └── kotlin/com/example/cipherspend/
+│           ├── CipherApplication.kt       # Application class (SQLCipher library loader)
+│           ├── MainActivity.kt            # Compose Navigation Host & Biometric prompt
+│           ├── NotificationService.kt     # Financial notification listener
+│           ├── SmsBackgroundReceiver.kt   # Real-time SMS broadcast listener
+│           ├── data/
+│           │   ├── dao/                   # Room Data Access Objects
+│           │   │   ├── CustomRuleDao.kt
+│           │   │   ├── IgnoredHashDao.kt
+│           │   │   └── TransactionDao.kt
+│           │   ├── db/                    # Encrypted database provider
+│           │   │   ├── AppDatabase.kt
+│           │   │   └── DatabaseProvider.kt
+│           │   └── model/                 # Room Entities
+│           │       ├── CustomRuleEntity.kt
+│           │       ├── IgnoredHashEntity.kt
+│           │       └── TransactionEntity.kt
+│           ├── service/                   # Domain Services
+│           │   ├── AiCategorizationService.kt # TFLite inference runner
+│           │   ├── SmsParser.kt           # Rule-based extraction & NER fallback
+│           │   └── SmsSyncManager.kt      # Inbox sync engine
+│           └── ui/
+│               ├── components/            # Reusable UI components & dialogs
+│               │   ├── HighRiskGuardDialog.kt
+│               │   ├── MainAppScaffold.kt
+│               │   └── ProminentDisclosureDialog.kt
+│               ├── screens/               # Compose Screen Destinations
+│               │   ├── DashboardScreen.kt
+│               │   ├── InteractiveTrainingScreen.kt
+│               │   ├── ManualEntryScreen.kt
+│               │   ├── MpinSetupScreen.kt
+│               │   ├── ProfileEditScreen.kt
+│               │   ├── ProfileSetupScreen.kt
+│               │   ├── SettingsScreen.kt
+│               │   ├── StartupScreen.kt
+│               │   ├── TransactionDetailScreen.kt
+│               │   └── UnlockScreen.kt
+│               ├── theme/                 # Cyber-slate theme tokens & styling
+│               └── viewmodel/             # ViewModels & StateFlow providers
+│                   ├── AuthViewModel.kt
+│                   └── TransactionViewModel.kt
+├── gradle/                                # Gradle wrapper configuration
+├── screenshots/                           # UI previews and documentation media
+└── build.gradle.kts                       # Root project build script
 ```
 
 ---
@@ -141,65 +168,57 @@ cipherspend-v1/
 ## 🚀 Getting Started
 
 ### Prerequisites
+- **JDK 17** or higher
+- **Android Studio** Ladybug (2024.2+) or higher
+- **Android SDK Platform 35** (Android 15)
+- Android physical device or emulator running **API 26+**
 
-- **Flutter SDK** (`>=3.0.0`) — [Installation Guide](https://docs.flutter.dev/get-started/install)
-- **Android Studio** — Required for Android SDK and Emulators.
-- **Authenticator App** — You MUST have Google Authenticator, Authy, or a similar TOTP app installed on your testing device/emulator to complete the initial setup flow.
-
-### Installation
+### Building from Source
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/yourusername/cipherspend.git](https://github.com/yourusername/cipherspend.git)
-   cd cipherspend
+   git clone https://github.com/SABARISH0014/cipherspend-compose.git
+   cd cipherspend-compose
    ```
 
-2. **Fetch Flutter packages:**
+2. **Assemble the Debug APK:**
    ```bash
-   flutter pub get
+   ./gradlew assembleDebug
    ```
 
-3. **Configure Android SDK (If necessary):**
-   Ensure your `local.properties` file points to your Android SDK path.
-
-4. **Run the App:**
-   Connect a physical Android device or launch an emulator, then run:
+3. **Install on connected device:**
    ```bash
-   flutter run
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
+
+4. **Assemble the Production Release APK:**
+   ```bash
+   ./gradlew assembleRelease
+   ```
+   *(The production build applies full R8 minification, dead code elimination, and resource shrinking).*
 
 ---
 
-## 🔐 Security Workflows
+## 🛡️ Play Store Compliance & Permission Disclosures
 
-### The Hybrid Setup Flow
-1. **Initial Boot:** The app detects no existing vault and forces the user into `setup_screen.dart`.
-2. **TOTP Pairing:** The user is presented with a QR Code / Secret Key to pair with their Authenticator app.
-3. **Verification:** The user inputs the 6-digit TOTP code to prove ownership.
-4. **MPIN Generation:** The user creates a 4-digit MPIN for daily use.
-5. **Key Generation:** A secure encryption key is generated, stored in Android KeyStore (`flutter_secure_storage`), and used to initialize the `sqflite_sqlcipher` database.
+CipherSpend is designed to comply with Google Play's **Sensitive Permissions and Financial Data Policies**:
 
-### High-Risk Actions
-Actions like exporting data, deleting the database, or changing settings are wrapped in the `HighRiskGuard` widget. This intercepts the user intent and forces them to input a fresh 6-digit TOTP code before allowing the action to proceed.
-
----
-
-## 🧪 Testing
-
-The project includes an end-to-end integration test that verifies the critical path of the application.
-
-To run the integration suite:
-```bash
-flutter test integration_test/app_flow_test.dart
-```
+- **No `PACKAGE_USAGE_STATS`:** CipherSpend does not request or inspect system-wide app usage.
+- **SMS Permission Justification:** `RECEIVE_SMS` and `READ_SMS` are utilized exclusively on-device for the primary app purpose of real-time expense extraction.
+- **Prominent Disclosure:** Before requesting SMS permissions, a dedicated, user-facing disclosure dialog is presented outlining how SMS messages are parsed locally without being uploaded to any server.
+- **100% Offline Integrity:** No network requests, no external tracking analytics, and no third-party cloud SDKs.
 
 ---
 
 ## 🤝 Contributing
-Because this project deals with sensitive local encryption and financial data logic, please ensure all PRs maintain the strict "100% Offline" rule. No external HTTP packages or cloud analytics SDKs will be merged.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+We welcome contributions! To maintain the core privacy guarantee of CipherSpend:
+1. **Never introduce external network calls or cloud analytics libraries.** All processing must execute 100% locally on the device.
+2. Keep code modular, strictly typed, and formatted according to Kotlin and Jetpack Compose best practices.
+3. Test builds using `./gradlew assembleRelease` before submitting a Pull Request.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the LICENSE file for details.
