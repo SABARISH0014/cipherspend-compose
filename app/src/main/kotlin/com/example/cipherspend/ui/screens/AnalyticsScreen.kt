@@ -1,6 +1,12 @@
 package com.example.cipherspend.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +27,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +48,9 @@ import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun AnalyticsScreen(
@@ -46,6 +59,7 @@ fun AnalyticsScreen(
     val forecast by viewModel.forecast.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val selectedMonth by viewModel.selectedMonth.collectAsState()
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     val categorySpends = remember(transactions) {
         transactions.groupBy { it.category }
@@ -164,7 +178,8 @@ fun AnalyticsScreen(
                             SankeyChart(
                                 budget = budget,
                                 totalSpent = totalSpent,
-                                categories = categorySpends
+                                categories = categorySpends,
+                                selectedCategory = selectedCategory
                             )
                         }
                     }
@@ -237,58 +252,185 @@ fun AnalyticsScreen(
             }
 
             items(categorySpends.size) { index ->
-            val cat = categorySpends[index]
-            val catColor = getCategoryColor(cat.category)
-            val percent = if (totalSpent > 0) (cat.total / totalSpent * 100).toInt() else 0
+                val cat = categorySpends[index]
+                val catColor = getCategoryColor(cat.category)
+                val percent = if (totalSpent > 0) (cat.total / totalSpent * 100).toInt() else 0
+                val isSelected = selectedCategory == cat.category
+                val catTransactions = remember(transactions, cat.category) {
+                    transactions.filter { it.category.equals(cat.category, ignoreCase = true) }
+                }
+                val topMerchants = remember(catTransactions) {
+                    catTransactions.groupBy { it.merchant }
+                        .mapValues { it.value.sumOf { tx -> tx.amount } }
+                        .toList()
+                        .sortedByDescending { it.second }
+                        .take(3)
+                }
+                val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(shape = RoundedCornerShape(14.dp))
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassEffect(
+                            shape = RoundedCornerShape(16.dp),
+                            backgroundColor = if (isSelected) Color(0xFF131F33) else Color(0xFF0F1726),
+                            borderColor = if (isSelected) catColor.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.08f)
+                        )
+                        .clickable {
+                            selectedCategory = if (selectedCategory == cat.category) null else cat.category
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .background(catColor, RoundedCornerShape(4.dp))
-                        )
-                        Spacer(modifier = Modifier.padding(horizontal = 6.dp))
-                        Text(
-                            text = cat.category,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = TextPrimary,
-                                fontSize = 14.sp
-                            )
-                        )
-                    }
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .background(catColor, RoundedCornerShape(4.dp))
+                                )
+                                Spacer(modifier = Modifier.padding(horizontal = 6.dp))
+                                Text(
+                                    text = cat.category,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                )
+                            }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "₹${"%,.2f".format(cat.total)}",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = TextPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                        )
-                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                        Text(
-                            text = "($percent%)",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextMuted,
-                                fontSize = 11.sp
-                            )
-                        )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "₹${"%,.2f".format(cat.total)}",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                )
+                                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                                Text(
+                                    text = "($percent%)",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = TextMuted,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = isSelected,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(modifier = Modifier.padding(top = 14.dp)) {
+                                if (topMerchants.isNotEmpty()) {
+                                    Text(
+                                        text = "TOP MERCHANTS",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = CyberCyan,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp,
+                                            fontSize = 10.sp
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        topMerchants.forEach { (merchant, total) ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(Color.White.copy(alpha = 0.05f))
+                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                            ) {
+                                                Column {
+                                                    Text(
+                                                        text = merchant,
+                                                        style = MaterialTheme.typography.labelSmall.copy(
+                                                            color = TextPrimary,
+                                                            fontWeight = FontWeight.SemiBold
+                                                        ),
+                                                        maxLines = 1,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    )
+                                                    Text(
+                                                        text = "₹${"%,.0f".format(total)}",
+                                                        style = MaterialTheme.typography.bodySmall.copy(
+                                                            color = catColor,
+                                                            fontSize = 11.sp
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+
+                                Text(
+                                    text = "RECENT TRANSACTIONS (${catTransactions.size})",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = TextSecondary,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    catTransactions.take(6).forEach { tx ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color.White.copy(alpha = 0.03f))
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = tx.merchant,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        color = TextPrimary,
+                                                        fontWeight = FontWeight.Medium
+                                                    ),
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = dateFormat.format(Date(tx.timestamp)),
+                                                    style = MaterialTheme.typography.bodySmall.copy(
+                                                        color = TextMuted,
+                                                        fontSize = 10.sp
+                                                    )
+                                                )
+                                            }
+                                            Text(
+                                                text = "₹${"%,.2f".format(tx.amount)}",
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    color = TextPrimary,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
     }
 
         // Bottom clearance

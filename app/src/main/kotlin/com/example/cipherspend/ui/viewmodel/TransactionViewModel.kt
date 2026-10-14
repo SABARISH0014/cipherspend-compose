@@ -11,12 +11,15 @@ import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.service.PredictionService
 import com.example.cipherspend.service.SmsParser
 import com.example.cipherspend.service.SpendingForecast
+import com.example.cipherspend.service.getSalaryCycleBounds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.YearMonth
@@ -24,8 +27,15 @@ import java.time.ZoneId
 import java.util.Calendar
 
 class TransactionViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = DatabaseProvider.getDatabase(application)
+    private val db get() = DatabaseProvider.getDatabase(getApplication())
     private val predictionService = PredictionService.getInstance(application)
+
+    private val _dbEpoch = MutableStateFlow(0)
+
+    fun onDatabaseReset() {
+        _dbEpoch.value++
+        refreshForecast()
+    }
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
@@ -53,7 +63,10 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     private val _isDemoMode = MutableStateFlow(generalPrefs.getBoolean("is_demo_mode", false))
     val isDemoMode: StateFlow<Boolean> = _isDemoMode.asStateFlow()
 
-    private val rawTransactions = db.transactionDao().getAllTransactionsFlow()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val rawTransactions = _dbEpoch.flatMapLatest {
+        db.transactionDao().getAllTransactionsFlow()
+    }
 
     val transactions: StateFlow<List<TransactionEntity>> = combine(
         rawTransactions,
@@ -61,8 +74,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         _selectedCategoryFilter,
         _selectedMonth
     ) { list, query, cat, ym ->
-        val start = ym.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val end = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val cycleDay = generalPrefs.getInt("salary_cycle_day", 1)
+        val (start, end) = getSalaryCycleBounds(ym, cycleDay)
         var filtered = list.filter { it.timestamp in start until end }
 
         if (query.isNotBlank()) {
@@ -129,9 +142,10 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     val allTransactions: StateFlow<List<TransactionEntity>> = rawTransactions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val notifications: StateFlow<List<AppNotificationEntity>> = db.appNotificationDao()
-        .getAllNotificationsFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val notifications: StateFlow<List<AppNotificationEntity>> = _dbEpoch.flatMapLatest {
+        db.appNotificationDao().getAllNotificationsFlow()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         refreshForecast()
@@ -223,13 +237,23 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     fun updateMerchantCorrection(transactionId: Long, newMerchant: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val existing = db.transactionDao().getTransactionById(transactionId) ?: return@launch
-            val updated = existing.copy(merchant = newMerchant.trim())
+            val cleanNewMerchant = newMerchant.trim()
+            val oldMerchant = existing.merchant
+            val updated = existing.copy(merchant = cleanNewMerchant)
             db.transactionDao().update(updated)
             db.transactionDao().updateMerchantByBodyAndSender(
                 body = existing.body,
                 sender = existing.sender,
-                merchant = newMerchant.trim()
+                merchant = cleanNewMerchant
             )
+            if (oldMerchant.isNotBlank()) {
+                db.transactionDao().updateMerchantGlobally(
+                    oldMerchant = oldMerchant,
+                    newMerchant = cleanNewMerchant
+                )
+                val overridePrefs = getApplication<Application>().getSharedPreferences("cipher_merchant_overrides", android.content.Context.MODE_PRIVATE)
+                overridePrefs.edit().putString(oldMerchant.lowercase(), cleanNewMerchant).apply()
+            }
             refreshForecast()
         }
     }

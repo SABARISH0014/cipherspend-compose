@@ -187,6 +187,7 @@ class MainActivity : FragmentActivity() {
                                 navController.navigate("profile_edit")
                             },
                             onNuclearWipeComplete = {
+                                transactionViewModel.onDatabaseReset()
                                 navController.navigate("profile_setup") {
                                     popUpTo(0) { inclusive = true }
                                 }

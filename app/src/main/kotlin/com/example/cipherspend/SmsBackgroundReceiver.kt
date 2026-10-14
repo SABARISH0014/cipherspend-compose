@@ -40,6 +40,11 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
 
                 val autoDropDuplicates = prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
 
+                val overridePrefs = context.getSharedPreferences("cipher_merchant_overrides", Context.MODE_PRIVATE)
+                val merchantOverrides = overridePrefs.all.mapNotNull { (k, v) ->
+                    if (v is String) k to v else null
+                }.toMap()
+
                 pdus.forEach { pdu ->
                     val msg = SmsMessage.createFromPdu(pdu as ByteArray, format)
                     val sender = msg.originatingAddress ?: "Unknown"
@@ -50,7 +55,8 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                         sender = sender,
                         body = body,
                         timestamp = timestamp,
-                        predictionService = predictionService
+                        predictionService = predictionService,
+                        merchantOverrides = merchantOverrides
                     )
 
                     if (parsedTx != null) {

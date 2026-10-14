@@ -52,11 +52,14 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE sender = 'DEMO_MODE'")
     suspend fun deleteDemoTransactions()
 
-    @Query("SELECT SUM(amount) FROM transactions WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp")
+    @Query("SELECT SUM(amount) FROM transactions WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp AND category != 'Refund'")
     suspend fun getMonthlySpend(startTimestamp: Long, endTimestamp: Long): Double?
 
-    @Query("SELECT category, SUM(amount) as total FROM transactions WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp GROUP BY category ORDER BY total DESC")
+    @Query("SELECT category, SUM(amount) as total FROM transactions WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp AND category != 'Refund' GROUP BY category ORDER BY total DESC")
     suspend fun getCategorySpends(startTimestamp: Long, endTimestamp: Long): List<CategorySpend>
+
+    @Query("UPDATE transactions SET merchant = :newMerchant WHERE LOWER(merchant) = LOWER(:oldMerchant)")
+    suspend fun updateMerchantGlobally(oldMerchant: String, newMerchant: String): Int
 
     @Query("""
         SELECT * FROM transactions 

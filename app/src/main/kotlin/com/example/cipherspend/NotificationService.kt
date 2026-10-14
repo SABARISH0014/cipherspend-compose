@@ -51,11 +51,17 @@ class NotificationService : NotificationListenerService() {
                 val prefs = applicationContext.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
                 val autoDropDuplicates = prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
 
+                val overridePrefs = applicationContext.getSharedPreferences("cipher_merchant_overrides", Context.MODE_PRIVATE)
+                val merchantOverrides = overridePrefs.all.mapNotNull { (k, v) ->
+                    if (v is String) k to v else null
+                }.toMap()
+
                 val parsedTx = SmsParser.parseMessage(
                     sender = senderName,
                     body = fullBody,
                     timestamp = sbn.postTime,
-                    predictionService = predictionService
+                    predictionService = predictionService,
+                    merchantOverrides = merchantOverrides
                 )
 
                 if (parsedTx != null) {

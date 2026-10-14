@@ -81,6 +81,11 @@ object SmsSyncManager {
             // Self-healing: Reclassify any existing transactions falsely marked as "Cash"
             reclassifyLegacyCashTransactions(context)
 
+            val overridePrefs = context.getSharedPreferences("cipher_merchant_overrides", Context.MODE_PRIVATE)
+            val merchantOverrides = overridePrefs.all.mapNotNull { (k, v) ->
+                if (v is String) k to v else null
+            }.toMap()
+
             cursor?.use { c ->
                 val addressIdx = c.getColumnIndex(Telephony.Sms.ADDRESS)
                 val bodyIdx = c.getColumnIndex(Telephony.Sms.BODY)
@@ -109,7 +114,8 @@ object SmsSyncManager {
                             sender = sender,
                             body = body,
                             timestamp = timestamp,
-                            predictionService = predictionService
+                            predictionService = predictionService,
+                            merchantOverrides = merchantOverrides
                         )
 
                         if (tx != null) {

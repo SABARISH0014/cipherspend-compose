@@ -33,7 +33,8 @@ fun SankeyChart(
     budget: Double,
     totalSpent: Double,
     categories: List<CategorySpend>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedCategory: String? = null
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "sankey_particles")
     val animationProgress by infiniteTransition.animateFloat(
@@ -95,6 +96,7 @@ fun SankeyChart(
             val catHeight = (usableFlowHeight * proportion).coerceAtLeast(14f)
             val sourceAnchorHeight = (usableFlowHeight * proportion).coerceAtLeast(8f)
             val color = getCategoryColor(item.category)
+            val isSelected = selectedCategory != null && item.category.equals(selectedCategory, ignoreCase = true)
 
             // Right Category Node
             drawRoundRect(
@@ -119,17 +121,24 @@ fun SankeyChart(
                 endPointX, endPointY
             )
 
-            // Dim Flow Stream
+            // Stream Opacity based on selection
+            val streamAlpha = when {
+                selectedCategory == null -> 0.16f
+                isSelected -> 0.45f
+                else -> 0.06f
+            }
+
             drawPath(
                 path = path,
-                color = color.copy(alpha = 0.16f),
+                color = color.copy(alpha = streamAlpha),
                 style = Stroke(width = (catHeight * 0.75f).coerceIn(4f, 32f))
             )
 
             // Glowing Particles along path
             pathMeasure.setPath(path, false)
             val pathLength = pathMeasure.length
-            if (pathLength > 0f) {
+            val showParticles = selectedCategory == null || isSelected
+            if (showParticles && pathLength > 0f) {
                 val numParticles = 3
                 for (i in 0 until numParticles) {
                     val phase = i.toFloat() / numParticles

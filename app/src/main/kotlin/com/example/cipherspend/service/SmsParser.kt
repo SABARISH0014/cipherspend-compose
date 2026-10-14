@@ -60,7 +60,8 @@ object SmsParser {
         sender: String,
         body: String,
         timestamp: Long,
-        predictionService: PredictionService? = null
+        predictionService: PredictionService? = null,
+        merchantOverrides: Map<String, String> = emptyMap()
     ): TransactionEntity? {
         val cleanBody = body.replace("\\s+".toRegex(), " ").trim()
         val lowerBody = cleanBody.lowercase()
@@ -82,14 +83,37 @@ object SmsParser {
                     lowerBody.contains("reward")
 
             if (!isExpense || isIncomeOrPromo) return null
-        } else if (isSpam(cleanBody)) {
-            return null
+        } else {
+            if (isSpam(cleanBody)) {
+                return null
+            }
+
+            val debitIndicators = listOf(
+                "debited", "spent", "paid", "sent", "withdrawn", "withdrew",
+                "purchase", "deducted", "auto-debit", "mandate", "dr ", "txn of", "trf to", "transfer to"
+            )
+            val hasDebit = debitIndicators.any { lowerBody.contains(it) }
+
+            val creditPhrases = listOf(
+                "credited to", "credited in", "received in", "deposited", "salary credited", "refund of", "cashback of"
+            )
+            val hasCredit = creditPhrases.any { lowerBody.contains(it) }
+
+            if (!hasDebit || (hasCredit && !hasDebit)) {
+                return null
+            }
         }
 
         val amount = extractAmount(cleanBody, isNotification)
         if (amount <= 0.0) return null
 
-        val merchant = extractMerchant(cleanBody)
+        var merchant = extractMerchant(cleanBody)
+        merchantOverrides[merchant.lowercase()]?.let { customName ->
+            if (customName.isNotBlank()) {
+                merchant = customName
+            }
+        }
+
         val type = determineType(lowerBody)
         var category = predictionService?.predictCategory(cleanBody) ?: "Uncategorized"
 

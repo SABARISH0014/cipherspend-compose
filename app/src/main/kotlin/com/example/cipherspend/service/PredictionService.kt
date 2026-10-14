@@ -25,6 +25,29 @@ data class SpendingForecast(
     val topCategoryAmount: Double
 )
 
+fun getSalaryCycleBounds(ym: YearMonth, cycleDay: Int): Pair<Long, Long> {
+    val maxDaysThisMonth = ym.lengthOfMonth()
+    val clampedDay = cycleDay.coerceIn(1, minOf(28, maxDaysThisMonth))
+
+    val start = if (clampedDay == 1) {
+        ym.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    } else {
+        ym.atDay(clampedDay).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    val nextYm = ym.plusMonths(1)
+    val maxDaysNextMonth = nextYm.lengthOfMonth()
+    val clampedNextDay = cycleDay.coerceIn(1, minOf(28, maxDaysNextMonth))
+
+    val end = if (clampedDay == 1) {
+        nextYm.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    } else {
+        nextYm.atDay(clampedNextDay).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    return Pair(start, end)
+}
+
 class PredictionService private constructor(private val context: Context) {
     private val inferenceLock = Any()
     private var interpreter: Interpreter? = null
@@ -308,16 +331,9 @@ class PredictionService private constructor(private val context: Context) {
         val budget = prefs.getFloat("monthly_budget", 25000f).toDouble()
         if (budget <= 0) return
 
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startTimestamp = calendar.timeInMillis
-
-        calendar.add(Calendar.MONTH, 1)
-        val endTimestamp = calendar.timeInMillis
+        val cycleDay = prefs.getInt("salary_cycle_day", 1)
+        val currentYm = YearMonth.now()
+        val (startTimestamp, endTimestamp) = getSalaryCycleBounds(currentYm, cycleDay)
 
         val db = DatabaseProvider.getDatabase(context)
         val spent = (db.transactionDao().getMonthlySpend(startTimestamp, endTimestamp) ?: 0.0) + currentSpentOffset
@@ -343,8 +359,8 @@ class PredictionService private constructor(private val context: Context) {
         val currentYm = YearMonth.now()
         val ym = targetMonth ?: currentYm
 
-        val start = ym.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val end = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val cycleDay = prefs.getInt("salary_cycle_day", 1)
+        val (start, end) = getSalaryCycleBounds(ym, cycleDay)
 
         val db = DatabaseProvider.getDatabase(context)
         val spent = db.transactionDao().getMonthlySpend(start, end) ?: 0.0

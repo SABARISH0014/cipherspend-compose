@@ -29,11 +29,19 @@ import com.example.cipherspend.service.SmsSyncManager
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -168,6 +176,42 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (hasSmsPermission) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "syncRotation")
+                        val rotationAngle by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "rotation"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                                .clickable {
+                                    coroutineScope.launch {
+                                        SmsSyncManager.syncInbox(context, fullRescan = true)
+                                        CipherSnackbarManager.showMessage("Inbox synced")
+                                    }
+                                }
+                                .padding(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = "Sync Inbox",
+                                tint = if (syncProgress.isSyncing) CyberCyan else TextSecondary,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .graphicsLayer {
+                                        if (syncProgress.isSyncing) {
+                                            rotationZ = rotationAngle
+                                        }
+                                    }
+                            )
+                        }
+                    }
                     Box(
                         modifier = Modifier
                             .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
@@ -379,6 +423,100 @@ fun DashboardScreen(
                         color = if (progress >= 0.8f) Color(0xFFFF5252) else CyberCyan,
                         trackColor = Color.White.copy(alpha = 0.1f)
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val currentYm = java.time.YearMonth.now()
+                    val daysLeftInMonth = if (selectedMonth == currentYm) {
+                        (selectedMonth.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1).coerceAtLeast(1)
+                    } else if (selectedMonth.isAfter(currentYm)) {
+                        selectedMonth.lengthOfMonth()
+                    } else {
+                        1
+                    }
+                    val safePerDay = (budget - totalSpent).coerceAtLeast(0.0) / daysLeftInMonth.coerceAtLeast(1)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Safe/Day
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Safe/Day",
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "₹${"%,.0f".format(safePerDay)}/d",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        color = CyberCyan,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        // Avg Burn
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Avg Burn",
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "₹${"%,.0f".format(forecast?.dailyAverage ?: 0.0)}/d",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        color = NeonEmerald,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        // Top Spend
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Top Spend",
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = forecast?.topCategory ?: "None",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    ),
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -623,12 +761,14 @@ fun DashboardScreen(
                 showPrivacyDisclosure = false
                 pendingPermissionAction = null
                 if (action == "SMS") {
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.RECEIVE_SMS,
-                            Manifest.permission.READ_SMS
-                        )
+                    val permissions = mutableListOf(
+                        Manifest.permission.RECEIVE_SMS,
+                        Manifest.permission.READ_SMS
                     )
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    permissionLauncher.launch(permissions.toTypedArray())
                 } else if (action == "NOTIF") {
                     try {
                         context.startActivity(
