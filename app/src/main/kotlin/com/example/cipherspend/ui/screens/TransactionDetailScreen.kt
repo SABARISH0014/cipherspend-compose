@@ -140,16 +140,12 @@ class TicketShape(
 fun TransactionDetailScreen(
     transactionId: Long,
     viewModel: TransactionViewModel,
-    onNavigateBack: () -> Unit,
-    onNavigateToTraining: ((String, String) -> Unit)? = null
+    onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val haptics = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
-
-    val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
-    val advancedSettings = prefs.getBoolean("advanced_settings", false)
 
     var transaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var isEditingMerchant by remember { mutableStateOf(false) }
@@ -549,25 +545,7 @@ fun TransactionDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Only show Smart Matching Rule editor button when advanced_settings == true
-            if (advancedSettings && onNavigateToTraining != null) {
-                Button(
-                    onClick = { onNavigateToTraining(currentTx.body, currentTx.sender) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PurpleGlow.copy(alpha = 0.25f),
-                        contentColor = PurpleGlow
-                    )
-                ) {
-                    Text("Edit Smart Matching Rule", fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Bottom Return Button
             Button(

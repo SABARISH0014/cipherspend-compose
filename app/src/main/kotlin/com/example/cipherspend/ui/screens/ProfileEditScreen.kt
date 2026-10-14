@@ -500,12 +500,12 @@ fun ProfileEditScreen(
         }
     }
 
-    // TOTP Security Guard for Changing MPIN
+    // MPIN Security Guard for Changing MPIN
     if (showTotpGuardForMpin) {
         HighRiskGuardDialog(
             title = "Authorize MPIN Change",
-            message = "Enter your 6-digit TOTP authenticator code to proceed with changing your MPIN and re-keying your vault.",
-            onVerify = { code -> authViewModel.verifyCurrentTotp(code) },
+            message = "Enter your current 4-digit Master MPIN to proceed with setting a new MPIN.",
+            onVerify = { pin -> authViewModel.verifyMpin(pin) },
             onDismiss = { showTotpGuardForMpin = false },
             onAuthorized = {
                 showTotpGuardForMpin = false

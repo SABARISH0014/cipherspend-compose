@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import com.example.cipherspend.ui.components.CipherSnackbarHost
 import com.example.cipherspend.ui.components.MainAppScaffold
 import com.example.cipherspend.ui.screens.AppNotificationsScreen
-import com.example.cipherspend.ui.screens.InteractiveTrainingScreen
 import com.example.cipherspend.ui.screens.ManualEntryScreen
 import com.example.cipherspend.ui.screens.MpinSetupScreen
 import com.example.cipherspend.ui.screens.ProfileEditScreen
@@ -35,8 +34,6 @@ import com.example.cipherspend.ui.screens.ProfileSetupScreen
 import com.example.cipherspend.ui.screens.StartupScreen
 import com.example.cipherspend.ui.screens.TransactionDetailScreen
 import com.example.cipherspend.ui.screens.UnlockScreen
-import com.example.cipherspend.ui.screens.VerificationScreen
-import com.example.cipherspend.ui.screens.VerifySetupScreen
 import com.example.cipherspend.ui.theme.CipherSpendTheme
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
@@ -65,7 +62,6 @@ class MainActivity : FragmentActivity() {
                     if (isConfigured && !isAuthenticated) {
                         val currentRoute = navController.currentBackStackEntry?.destination?.route
                         if (currentRoute != null && currentRoute != "startup" && currentRoute != "unlock" &&
-                            currentRoute != "verification" && currentRoute != "verify_setup" &&
                             currentRoute != "mpin_setup" && currentRoute != "profile_setup"
                         ) {
                             navController.navigate("unlock") {
@@ -121,27 +117,7 @@ class MainActivity : FragmentActivity() {
                         )
                     }
 
-                    // 2. Verification Screen (Phone Number Collection & TOTP Secret Gen)
-                    composable("verification") {
-                        VerificationScreen(
-                            authViewModel = authViewModel,
-                            onNavigateToVerifySetup = {
-                                navController.navigate("verify_setup")
-                            }
-                        )
-                    }
-
-                    // 3. Verify Setup Screen (TOTP Secret Display & 6-Digit Code Input)
-                    composable("verify_setup") {
-                        VerifySetupScreen(
-                            authViewModel = authViewModel,
-                            onVerificationSuccess = {
-                                navController.navigate("mpin_setup")
-                            }
-                        )
-                    }
-
-                    // 4. MPIN Setup Screen (4-Digit MPIN & Biometrics Toggle)
+                    // 2. MPIN Setup Screen (4-Digit MPIN & Biometrics Toggle)
                     composable("mpin_setup") {
                         MpinSetupScreen(
                             authViewModel = authViewModel,
@@ -228,33 +204,6 @@ class MainActivity : FragmentActivity() {
                         )
                     }
 
-                    // 9. Interactive Training Screen (NER Regex Match Editor)
-                    composable(
-                        route = "interactive_training?body={body}&sender={sender}",
-                        arguments = listOf(
-                            navArgument("body") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            },
-                            navArgument("sender") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val body = backStackEntry.arguments?.getString("body") ?: ""
-                        val sender = backStackEntry.arguments?.getString("sender") ?: "HDFC-BANK"
-                        InteractiveTrainingScreen(
-                            smsBody = body,
-                            sender = sender,
-                            onNavigateBack = {
-                                navController.popBackStack()
-                            }
-                        )
-                    }
-
                     // Pushed over bottom bar: Transaction Detail Screen
                     composable(
                         route = "detail/{id}",
@@ -266,11 +215,6 @@ class MainActivity : FragmentActivity() {
                             viewModel = transactionViewModel,
                             onNavigateBack = {
                                 navController.popBackStack()
-                            },
-                            onNavigateToTraining = { body, sender ->
-                                val encodedBody = Uri.encode(body)
-                                val encodedSender = Uri.encode(sender)
-                                navController.navigate("interactive_training?body=$encodedBody&sender=$encodedSender")
                             }
                         )
                     }

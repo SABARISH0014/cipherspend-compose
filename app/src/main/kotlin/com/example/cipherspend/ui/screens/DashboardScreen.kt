@@ -60,8 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.cipherspend.data.model.TransactionEntity
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.components.MonthSelector
 import com.example.cipherspend.ui.components.getCategoryColor
+import com.example.cipherspend.ui.theme.AmberGlow
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DarkBackground
 import com.example.cipherspend.ui.theme.NeonEmerald
@@ -88,6 +90,7 @@ fun DashboardScreen(
     val forecast by viewModel.forecast.collectAsState()
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
+    val isDemoMode by viewModel.isDemoMode.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
     val syncProgress by SmsSyncManager.syncState
@@ -202,6 +205,93 @@ fun DashboardScreen(
                             imagePath = profileImage,
                             modifier = Modifier.size(40.dp)
                         )
+                    }
+                }
+            }
+        }
+
+        // Demo Mode Active Banner
+        if (isDemoMode) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassEffect(
+                            shape = RoundedCornerShape(16.dp),
+                            backgroundColor = Color(0xFF2A1C0A),
+                            borderColor = AmberGlow.copy(alpha = 0.6f)
+                        )
+                        .border(1.dp, AmberGlow.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(AmberGlow)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Demo Mode Active",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = AmberGlow,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                        Text(
+                            text = "Showing sample transactions so you can explore Analytics, Search, and Receipts.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = TextPrimary.copy(alpha = 0.9f),
+                                lineHeight = 18.sp
+                            )
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    pendingPermissionAction = "SMS"
+                                    showPrivacyDisclosure = true
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AmberGlow)
+                            ) {
+                                Text(
+                                    text = "Connect Real SMS",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.exitDemoMode()
+                                    CipherSnackbarManager.showMessage("Demo data cleared")
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, AmberGlow.copy(alpha = 0.6f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = AmberGlow)
+                            ) {
+                                Text(
+                                    text = "Exit Demo",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        color = AmberGlow,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -376,6 +466,29 @@ fun DashboardScreen(
                                 )
                             )
                         }
+
+                        if (!isDemoMode && !hasSmsPermission) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.loadDemoTransactions()
+                                    CipherSnackbarManager.showMessage("Demo transactions loaded!")
+                                },
+                                modifier = Modifier.fillMaxWidth().height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.6f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = CyberCyan)
+                            ) {
+                                Text(
+                                    text = "Try Demo Mode (No SMS Needed)",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = CyberCyan,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -461,6 +574,28 @@ fun DashboardScreen(
                             style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
+
+                        if (!isDemoMode) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.loadDemoTransactions()
+                                    CipherSnackbarManager.showMessage("Demo transactions loaded!")
+                                },
+                                modifier = Modifier.fillMaxWidth().height(42.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, AmberGlow.copy(alpha = 0.7f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = AmberGlow)
+                            ) {
+                                Text(
+                                    text = "Try Demo Mode (No SMS Needed)",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = AmberGlow,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }

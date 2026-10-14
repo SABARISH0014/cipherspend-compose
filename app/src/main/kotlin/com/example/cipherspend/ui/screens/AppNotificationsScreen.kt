@@ -118,7 +118,7 @@ fun AppNotificationsScreen(
 
                         Column {
                             Text(
-                                text = "SYSTEM LOGS & ALERTS",
+                                text = "BUDGET & SPEND ALERTS",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = CyberCyan,
                                     fontWeight = FontWeight.SemiBold,
@@ -126,7 +126,7 @@ fun AppNotificationsScreen(
                                 )
                             )
                             Text(
-                                text = "Notification Vault",
+                                text = "Notifications",
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     color = TextPrimary,
                                     fontWeight = FontWeight.Bold

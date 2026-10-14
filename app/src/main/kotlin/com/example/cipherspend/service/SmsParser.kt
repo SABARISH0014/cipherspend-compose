@@ -1,14 +1,19 @@
 package com.example.cipherspend.service
 
-import com.example.cipherspend.data.model.CustomRuleEntity
 import com.example.cipherspend.data.model.TransactionEntity
 import java.security.MessageDigest
 import java.util.regex.Pattern
 
 object SmsParser {
-    private val AMOUNT_REGEX = Pattern.compile(
-        """(?:rs\.?|inr|₹|amount|debited(?: for| by| with)?|spent|spent of|refund of|txn of|credited(?: for| with)?)\s*[:\-\s]*(?:rs\.?|inr|₹)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)""",
-        Pattern.CASE_INSENSITIVE
+    private val AMOUNT_PATTERNS = listOf(
+        // Pattern 1: Currency symbol/prefix followed by amount (e.g. "Rs. 1,234.50", "INR 500", "₹ 450")
+        Pattern.compile("""(?:rs\.?|inr|₹)\s*[:\-\s]*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)""", Pattern.CASE_INSENSITIVE),
+        // Pattern 2: Action word followed by amount (e.g. "debited for 500", "spent of Rs. 400", "paid by INR 250", "sent of 100")
+        Pattern.compile("""(?:debited|spent|paid|sent)(?:\s+(?:by|for|of|with))?\s+(?:rs\.?|inr|₹)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)""", Pattern.CASE_INSENSITIVE),
+        // Pattern 3: Amount followed by action (e.g. "500.00 debited", "1,200 spent")
+        Pattern.compile("""(?:rs\.?|inr|₹)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)\s+(?:debited|spent)""", Pattern.CASE_INSENSITIVE),
+        // Pattern 4: Fallback for "amount:", "txn of", "refund of"
+        Pattern.compile("""(?:amount|txn of|refund of)\s*[:\-\s]*(?:rs\.?|inr|₹)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]{1,2})?)""", Pattern.CASE_INSENSITIVE)
     )
 
     private val NOTIF_AMOUNT_REGEX = Pattern.compile(
@@ -16,9 +21,12 @@ object SmsParser {
         Pattern.CASE_INSENSITIVE
     )
 
-    private val MERCHANT_REGEX = Pattern.compile(
-        """(?:paid to|sent to|transfer to|trf to|transfer from|purchase at|txn at|to vpa|for|from|in|to)\s+([a-zA-Z0-9\s\.@\-_]+)""",
-        Pattern.CASE_INSENSITIVE
+    private val UPI_SLASH_REGEX = Pattern.compile(
+        """(?i)UPI/(?:P2M|P2A|DR|CR)/[0-9]+/([A-Za-z0-9\s.&_\-]+?)(?:/|\s+|$)"""
+    )
+
+    private val STANDARD_MERCHANT_REGEX = Pattern.compile(
+        """(?i)(?:paid to|sent to|transfer to|trf to|purchase at|spent at|txn at|to vpa|at|to)\s+([A-Za-z0-9][A-Za-z0-9\s.&@_\-]{1,35}?)(?=\s+(?:on|at|from|via|successful|ref|refno|upi|txn|dated|bal|avl|not you|call|sms|info)|[.\-,;]|$)"""
     )
 
     private val UPI_REGEX = Pattern.compile(
@@ -52,7 +60,6 @@ object SmsParser {
         sender: String,
         body: String,
         timestamp: Long,
-        customRules: List<CustomRuleEntity> = emptyList(),
         predictionService: PredictionService? = null
     ): TransactionEntity? {
         val cleanBody = body.replace("\\s+".toRegex(), " ").trim()
@@ -79,40 +86,10 @@ object SmsParser {
             return null
         }
 
-        // Check custom rules first
-        var customMerchant: String? = null
-        var customAmount: Double? = null
-        for (rule in customRules) {
-            try {
-                val rulePattern = Pattern.compile(rule.regexPattern, Pattern.CASE_INSENSITIVE)
-                val matcher = rulePattern.matcher(cleanBody)
-                if (matcher.find()) {
-                    val matchedMerchant = try {
-                        matcher.group("merchant")?.trim()
-                    } catch (_: IllegalArgumentException) {
-                        null
-                    }
-                    customMerchant = if (!matchedMerchant.isNullOrBlank()) {
-                        matchedMerchant
-                    } else {
-                        rule.merchantName
-                    }
-
-                    val matchedAmountStr = try {
-                        matcher.group("amount")?.replace(",", "")?.trim()
-                    } catch (_: IllegalArgumentException) {
-                        null
-                    }
-                    customAmount = matchedAmountStr?.toDoubleOrNull()
-                    break
-                }
-            } catch (_: Exception) {}
-        }
-
-        val amount = customAmount ?: extractAmount(cleanBody, isNotification)
+        val amount = extractAmount(cleanBody, isNotification)
         if (amount <= 0.0) return null
 
-        val merchant = customMerchant ?: extractMerchant(cleanBody)
+        val merchant = extractMerchant(cleanBody)
         val type = determineType(lowerBody)
         var category = predictionService?.predictCategory(cleanBody) ?: "Uncategorized"
 
@@ -138,16 +115,24 @@ object SmsParser {
     }
 
     fun extractAmount(body: String, isNotif: Boolean): Double {
-        val matcher = AMOUNT_REGEX.matcher(body)
-        if (matcher.find()) {
-            val raw = matcher.group(1)?.replace(",", "")
-            raw?.toDoubleOrNull()?.let { return it }
+        for (pattern in AMOUNT_PATTERNS) {
+            val matcher = pattern.matcher(body)
+            if (matcher.find()) {
+                val raw = matcher.group(1)?.replace(",", "")
+                val parsed = raw?.toDoubleOrNull()
+                if (parsed != null && parsed > 0.0) {
+                    return parsed
+                }
+            }
         }
         if (isNotif) {
             val notifMatcher = NOTIF_AMOUNT_REGEX.matcher(body)
             if (notifMatcher.find()) {
                 val raw = notifMatcher.group(1)?.replace(",", "")
-                raw?.toDoubleOrNull()?.let { return it }
+                val parsed = raw?.toDoubleOrNull()
+                if (parsed != null && parsed > 0.0) {
+                    return parsed
+                }
             }
         }
         return 0.0
@@ -155,7 +140,8 @@ object SmsParser {
 
     fun extractMerchant(body: String): String {
         val lower = body.lowercase()
-        // Known prominent merchant fast lookup for clean UI display
+
+        // 1. Known Indian brand fast-match
         when {
             lower.contains("swiggy instamart") -> return "Swiggy Instamart"
             lower.contains("swiggy") -> return "Swiggy"
@@ -166,30 +152,51 @@ object SmsParser {
             lower.contains("amazon") -> return "Amazon"
             lower.contains("flipkart") -> return "Flipkart"
             lower.contains("myntra") -> return "Myntra"
-            lower.contains("meesho") -> return "Meesho"
             lower.contains("zepto") -> return "Zepto"
             lower.contains("blinkit") -> return "Blinkit"
             lower.contains("bigbasket") -> return "BigBasket"
-            lower.contains("mcdonald") -> return "McDonald's"
-            lower.contains("kfc") -> return "KFC"
-            lower.contains("domino") -> return "Domino's"
-            lower.contains("pizza hut") -> return "Pizza Hut"
-            lower.contains("starbucks") -> return "Starbucks"
+            lower.contains("dmart") -> return "DMart"
             lower.contains("airtel") -> return "Airtel"
             lower.contains("jio") -> return "Jio"
             lower.contains("zerodha") -> return "Zerodha"
             lower.contains("groww") -> return "Groww"
             lower.contains("irctc") -> return "IRCTC"
+            lower.contains("netflix") -> return "Netflix"
+            lower.contains("spotify") -> return "Spotify"
+            lower.contains("bookmyshow") -> return "BookMyShow"
+            lower.contains("meesho") -> return "Meesho"
+            lower.contains("mcdonald") -> return "McDonald's"
+            lower.contains("kfc") -> return "KFC"
+            lower.contains("domino") -> return "Domino's"
+            lower.contains("pizza hut") -> return "Pizza Hut"
+            lower.contains("starbucks") -> return "Starbucks"
         }
 
-        val matcher = MERCHANT_REGEX.matcher(body)
-        if (matcher.find()) {
-            var name = matcher.group(1)?.trim() ?: ""
-            name = name.split("\\s+(?:on|at|from|via|successful|ref|refno|txn|dated|bal|avl|inr|rs)(?:\\s+|$)".toRegex(RegexOption.IGNORE_CASE))[0]
-            name = name.replace("[.\\-_]+$".toRegex(), "").trim()
-            if (name.isNotEmpty() && name.length <= 40) return name
+        // 2. UPI slash-delimited format
+        val upiSlashMatcher = UPI_SLASH_REGEX.matcher(body)
+        if (upiSlashMatcher.find()) {
+            val candidate = upiSlashMatcher.group(1)?.trim()
+            if (!candidate.isNullOrBlank()) {
+                val cleaned = cleanMerchantName(candidate)
+                if (cleaned.isNotEmpty() && cleaned.length <= 40) {
+                    return cleaned
+                }
+            }
         }
 
+        // 3. Standard "paid to / sent to / at / to" format (excluding "from" and "in")
+        val standardMatcher = STANDARD_MERCHANT_REGEX.matcher(body)
+        if (standardMatcher.find()) {
+            val candidate = standardMatcher.group(1)?.trim()
+            if (!candidate.isNullOrBlank()) {
+                val cleaned = cleanMerchantName(candidate)
+                if (cleaned.isNotEmpty() && cleaned.length <= 40) {
+                    return cleaned
+                }
+            }
+        }
+
+        // 4. VPA fallback
         val vpaMatcher = VPA_REGEX.matcher(body)
         if (vpaMatcher.find()) {
             return vpaMatcher.group(1) ?: "Unknown Merchant"
@@ -197,6 +204,12 @@ object SmsParser {
 
         if (body.contains("atm", ignoreCase = true)) return "ATM"
         return "Unknown Merchant"
+    }
+
+    private fun cleanMerchantName(raw: String): String {
+        return raw.split("\\s+(?:on|at|from|via|successful|ref|refno|upi|txn|dated|bal|avl|inr|rs)(?:\\s+|$)".toRegex(RegexOption.IGNORE_CASE))[0]
+            .replace("[.\\-_,;]+$".toRegex(), "")
+            .trim()
     }
 
     fun determineType(lowerBody: String): String {
@@ -239,21 +252,5 @@ object SmsParser {
         val raw = "$sender$clean$timestamp"
         val bytes = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
-    }
-
-    /**
-     * Synthesizes a pattern silently in the background when user edits a merchant name.
-     */
-    fun synthesizeRuleForCorrection(sender: String, body: String, correctedMerchant: String): CustomRuleEntity {
-        // Find if old merchant or common payment tokens exist in body and build a regex
-        val escapedMerchant = Pattern.quote(correctedMerchant)
-        // If the body already contains a distinct segment, anchor around it
-        val words = body.split("\\s+".toRegex()).take(6).joinToString(" ") { Pattern.quote(it) }
-        val pattern = ".*($escapedMerchant|paid to|sent to).*"
-        return CustomRuleEntity(
-            sender = sender,
-            regexPattern = pattern,
-            merchantName = correctedMerchant
-        )
     }
 }

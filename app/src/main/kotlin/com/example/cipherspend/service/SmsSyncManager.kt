@@ -44,7 +44,6 @@ object SmsSyncManager {
 
         try {
             val db = DatabaseProvider.getDatabase(context)
-            val customRules = db.customRuleDao().getAllRules()
             val predictionService = PredictionService.getInstance(context)
 
             val prefs = context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
@@ -110,7 +109,6 @@ object SmsSyncManager {
                             sender = sender,
                             body = body,
                             timestamp = timestamp,
-                            customRules = customRules,
                             predictionService = predictionService
                         )
 
@@ -158,6 +156,12 @@ object SmsSyncManager {
                 val insertedIds = db.transactionDao().insertAll(batchBuffer)
                 insertedCount += insertedIds.count { it != -1L }
                 batchBuffer.clear()
+            }
+
+            // Automatically clear Demo Mode transactions when real SMS transactions are imported
+            if (insertedCount > 0) {
+                db.transactionDao().deleteDemoTransactions()
+                prefs.edit().putBoolean("is_demo_mode", false).apply()
             }
 
             Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found $totalFound transactions, inserted $insertedCount new rows.")

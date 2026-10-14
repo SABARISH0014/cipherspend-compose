@@ -46,7 +46,6 @@ class NotificationService : NotificationListenerService() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = DatabaseProvider.getDatabase(applicationContext)
-                val customRules = db.customRuleDao().getAllRules()
                 val predictionService = PredictionService.getInstance(applicationContext)
 
                 val prefs = applicationContext.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
@@ -56,7 +55,6 @@ class NotificationService : NotificationListenerService() {
                     sender = senderName,
                     body = fullBody,
                     timestamp = sbn.postTime,
-                    customRules = customRules,
                     predictionService = predictionService
                 )
 
@@ -75,6 +73,8 @@ class NotificationService : NotificationListenerService() {
                     val rowId = db.transactionDao().insert(parsedTx)
                     if (rowId != -1L) {
                         Log.d("NotificationService", "Saved notification transaction: ₹${parsedTx.amount} to ${parsedTx.merchant}")
+                        db.transactionDao().deleteDemoTransactions()
+                        prefs.edit().putBoolean("is_demo_mode", false).apply()
                         predictionService.checkSpendingLimits()
                     }
                 }

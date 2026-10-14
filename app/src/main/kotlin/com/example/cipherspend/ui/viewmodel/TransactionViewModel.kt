@@ -48,6 +48,11 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     private val _forecast = MutableStateFlow<SpendingForecast?>(null)
     val forecast: StateFlow<SpendingForecast?> = _forecast.asStateFlow()
 
+    private val generalPrefs = application.getSharedPreferences("CipherSpendPrefs", android.content.Context.MODE_PRIVATE)
+
+    private val _isDemoMode = MutableStateFlow(generalPrefs.getBoolean("is_demo_mode", false))
+    val isDemoMode: StateFlow<Boolean> = _isDemoMode.asStateFlow()
+
     private val rawTransactions = db.transactionDao().getAllTransactionsFlow()
 
     val transactions: StateFlow<List<TransactionEntity>> = combine(
@@ -213,21 +218,123 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
     /**
      * Error Prevention (One-Tap Corrections):
-     * Updates the merchant name in Room and synthesizes regex pattern silently in background.
+     * Updates the merchant name in Room across matching messages.
      */
     fun updateMerchantCorrection(transactionId: Long, newMerchant: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val existing = db.transactionDao().getTransactionById(transactionId) ?: return@launch
             val updated = existing.copy(merchant = newMerchant.trim())
             db.transactionDao().update(updated)
-
-            // Synthesize regex rule silently in the background
-            val rule = SmsParser.synthesizeRuleForCorrection(
-                sender = existing.sender,
+            db.transactionDao().updateMerchantByBodyAndSender(
                 body = existing.body,
-                correctedMerchant = newMerchant.trim()
+                sender = existing.sender,
+                merchant = newMerchant.trim()
             )
-            db.customRuleDao().insertRule(rule)
+            refreshForecast()
+        }
+    }
+
+    fun loadDemoTransactions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isDemoMode.value = true
+            generalPrefs.edit().putBoolean("is_demo_mode", true).apply()
+
+            val now = System.currentTimeMillis()
+            val dayMillis = 86_400_000L
+
+            val demoList = listOf(
+                TransactionEntity(
+                    hash = "demo_hash_swiggy",
+                    sender = "DEMO_MODE",
+                    body = "Paid Rs 420.00 to Swiggy via UPI",
+                    amount = 420.0,
+                    category = "Food & Dining",
+                    type = "UPI",
+                    merchant = "Swiggy",
+                    timestamp = now - (1 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_amazon",
+                    sender = "DEMO_MODE",
+                    body = "Spent Rs 1899.00 on Amazon with Card ending 4412",
+                    amount = 1899.0,
+                    category = "Shopping",
+                    type = "Card",
+                    merchant = "Amazon",
+                    timestamp = now - (2 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_uber",
+                    sender = "DEMO_MODE",
+                    body = "Paid Rs 265.00 to Uber via UPI",
+                    amount = 265.0,
+                    category = "Travel",
+                    type = "UPI",
+                    merchant = "Uber",
+                    timestamp = now - (3 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_airtel",
+                    sender = "DEMO_MODE",
+                    body = "Paid Rs 999.00 to Airtel Broadband via UPI",
+                    amount = 999.0,
+                    category = "Bills & Utilities",
+                    type = "UPI",
+                    merchant = "Airtel Broadband",
+                    timestamp = now - (4 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_zerodha",
+                    sender = "DEMO_MODE",
+                    body = "Transferred Rs 5000.00 to Zerodha SIP via Bank Transfer",
+                    amount = 5000.0,
+                    category = "Investment",
+                    type = "Bank Transfer",
+                    merchant = "Zerodha SIP",
+                    timestamp = now - (5 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_starbucks",
+                    sender = "DEMO_MODE",
+                    body = "Spent Rs 380.00 at Starbucks with Card ending 8911",
+                    amount = 380.0,
+                    category = "Food & Dining",
+                    type = "Card",
+                    merchant = "Starbucks",
+                    timestamp = now - (6 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_zomato",
+                    sender = "DEMO_MODE",
+                    body = "Paid Rs 540.00 to Zomato via UPI",
+                    amount = 540.0,
+                    category = "Food & Dining",
+                    type = "UPI",
+                    merchant = "Zomato",
+                    timestamp = now - (7 * dayMillis)
+                ),
+                TransactionEntity(
+                    hash = "demo_hash_hpcl",
+                    sender = "DEMO_MODE",
+                    body = "Spent Rs 1200.00 at HPCL Fuel with Card ending 4412",
+                    amount = 1200.0,
+                    category = "Travel",
+                    type = "Card",
+                    merchant = "HPCL Fuel",
+                    timestamp = now - (8 * dayMillis)
+                )
+            )
+
+            db.transactionDao().insertAll(demoList)
+            refreshForecast()
+        }
+    }
+
+    fun exitDemoMode() {
+        viewModelScope.launch(Dispatchers.IO) {
+            db.transactionDao().deleteDemoTransactions()
+            _isDemoMode.value = false
+            generalPrefs.edit().putBoolean("is_demo_mode", false).apply()
             refreshForecast()
         }
     }

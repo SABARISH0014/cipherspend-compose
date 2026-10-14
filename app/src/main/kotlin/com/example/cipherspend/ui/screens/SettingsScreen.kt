@@ -93,27 +93,18 @@ fun SettingsScreen(
     val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
 
     val isBiometricEnabled by authViewModel.isBiometricEnabled.collectAsState()
-    val isTotpEnabled by authViewModel.isTotpEnabled.collectAsState()
-    val totpSecret by authViewModel.totpSecret.collectAsState()
     val forecast by transactionViewModel.forecast.collectAsState()
 
-    var showTotpDialog by remember { mutableStateOf(false) }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var showPurgeDialog by remember { mutableStateOf(false) }
-    var showTotpGuardForPurge by remember { mutableStateOf(false) }
+    var showMpinGuardForPurge by remember { mutableStateOf(false) }
 
-    var candidateTotpSecret by remember { mutableStateOf("") }
-    var totpInputCode by remember { mutableStateOf("") }
     var budgetInput by remember { mutableStateOf((forecast?.budget ?: 25000.0).toInt().toString()) }
 
     var autoDropDuplicates by remember {
         mutableStateOf(
             prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
         )
-    }
-
-    var advancedSettingsEnabled by remember {
-        mutableStateOf(prefs.getBoolean("advanced_settings", false))
     }
 
     val powerManager = remember { context.getSystemService(Context.POWER_SERVICE) as? PowerManager }
@@ -178,56 +169,6 @@ fun SettingsScreen(
                     .padding(18.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Advanced Vault Mode (TOTP)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.VpnKey,
-                                contentDescription = "TOTP",
-                                tint = PurpleGlow,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Advanced Vault Mode (TOTP)",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        color = TextPrimary,
-                                        fontSize = 15.sp
-                                    )
-                                )
-                                Text(
-                                    text = if (isTotpEnabled) "Enabled (2FA Authenticator Paired)" else "Pair Authenticator App (RFC 6238)",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                )
-                            }
-                        }
-
-                        if (isTotpEnabled) {
-                            TextButton(onClick = { authViewModel.disableTotp() }) {
-                                Text("Disable", color = DangerRed)
-                            }
-                        } else {
-                            Button(
-                                onClick = {
-                                    candidateTotpSecret = authViewModel.generateNewTotpSecret()
-                                    showTotpDialog = true
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PurpleGlow)
-                            ) {
-                                Text("Pair", color = Color.White, fontSize = 12.sp)
-                            }
-                        }
-                    }
-
                     // Biometric Unlock Toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -377,54 +318,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    // 2. Advanced Tools Toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Tune,
-                                contentDescription = "Advanced",
-                                tint = PurpleGlow,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Advanced Tools",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        color = TextPrimary,
-                                        fontSize = 15.sp
-                                    )
-                                )
-                                Text(
-                                    text = "Enable manual sync and smart rule editor",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                )
-                            }
-                        }
-
-                        Switch(
-                            checked = advancedSettingsEnabled,
-                            onCheckedChange = {
-                                advancedSettingsEnabled = it
-                                prefs.edit().putBoolean("advanced_settings", it).apply()
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = PurpleGlow,
-                                uncheckedThumbColor = TextMuted,
-                                uncheckedTrackColor = SurfaceDark
-                            )
-                        )
-                    }
-
-                    // 4. Unrestricted Battery (OEM Reliability)
+                    // 3. Unrestricted Battery (OEM Reliability)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -605,106 +499,7 @@ fun SettingsScreen(
         }
     }
 
-    // TOTP Pairing Dialog
-    if (showTotpDialog) {
-        AlertDialog(
-            onDismissRequest = { showTotpDialog = false },
-            title = { Text("Pair Authenticator App (TOTP)", color = TextPrimary) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Scan or tap to open in Google Authenticator, Aegis, or 2FAS, or copy the key below:",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
-                    )
 
-                    // Open in Authenticator App Button (otpauth URI with default issuer account name)
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = {
-                            try {
-                                val uri = Uri.parse("otpauth://totp/CipherSpend:CipherSpend%20User?secret=$candidateTotpSecret&issuer=CipherSpend")
-                                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                clipboardManager.setText(AnnotatedString(candidateTotpSecret))
-                                CipherSnackbarManager.showMessage("Secret copied to clipboard")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(44.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, PurpleGlow.copy(alpha = 0.6f))
-                    ) {
-                        Text("Open Authenticator App", color = PurpleGlow, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = Color(0xFF131B2A))
-                            .clickable {
-                                clipboardManager.setText(AnnotatedString(candidateTotpSecret))
-                                CipherSnackbarManager.showMessage("Secret copied to clipboard")
-                            }
-                            .padding(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = candidateTotpSecret,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = PurpleGlow,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copy", tint = TextMuted)
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = totpInputCode,
-                        onValueChange = { if (it.length <= 6) totpInputCode = it },
-                        label = { Text("6-Digit Code") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PurpleGlow,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val verified = authViewModel.verifyAndEnableTotp(candidateTotpSecret, totpInputCode)
-                        if (verified) {
-                            CipherSnackbarManager.showMessage("TOTP Advanced Vault Activated!")
-                            showTotpDialog = false
-                            totpInputCode = ""
-                        } else {
-                            CipherSnackbarManager.showMessage("Invalid OTP code", isError = true)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PurpleGlow)
-                ) {
-                    Text("Verify & Enable", color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTotpDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
-                }
-            },
-            containerColor = Color(0xFF131B2A)
-        )
-    }
 
     // Budget Configuration Dialog
     if (showBudgetDialog) {
@@ -761,7 +556,7 @@ fun SettingsScreen(
             title = { Text("Delete Account & Data", color = DangerRed) },
             text = {
                 Text(
-                    text = "This will permanently destroy the encrypted database (cipherspend_encrypted.db), wipe encryption keys from hardware keystore, and erase your MPIN, TOTP secret, and user profile.\n\nYou will be prompted for TOTP authorization next.",
+                    text = "This will permanently destroy the encrypted database (cipherspend_encrypted.db), wipe encryption keys from hardware keystore, and erase your MPIN and user profile.\n\nYou will be prompted for your 4-digit Master MPIN next.",
                     color = TextSecondary
                 )
             },
@@ -769,7 +564,7 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showPurgeDialog = false
-                        showTotpGuardForPurge = true
+                        showMpinGuardForPurge = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
@@ -785,16 +580,16 @@ fun SettingsScreen(
         )
     }
 
-    // High Risk Guard Dialog requiring 6-digit TOTP before Factory Reset executes
-    if (showTotpGuardForPurge) {
+    // High Risk Guard Dialog requiring 4-digit Master MPIN before Factory Reset executes
+    if (showMpinGuardForPurge) {
         HighRiskGuardDialog(
             title = "Authorize Vault Destruction",
-            message = "Enter your 6-digit TOTP code to authorize permanent destruction of the encrypted database.",
-            onVerify = { code -> authViewModel.verifyCurrentTotp(code) },
-            onDismiss = { showTotpGuardForPurge = false },
+            message = "Enter your 4-digit Master MPIN to authorize permanent destruction of the encrypted database.",
+            onVerify = { pin -> authViewModel.verifyMpin(pin) },
+            onDismiss = { showMpinGuardForPurge = false },
             onAuthorized = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                showTotpGuardForPurge = false
+                showMpinGuardForPurge = false
                 authViewModel.nuclearWipe()
                 CipherSnackbarManager.showMessage("Account & data erased. Vault destroyed.")
                 onNuclearWipeComplete()

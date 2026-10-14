@@ -59,8 +59,8 @@ import com.example.cipherspend.ui.theme.glassEffect
 
 @Composable
 fun HighRiskGuardDialog(
-    title: String = "Security Verification",
-    message: String = "Enter your 6-digit Authenticator TOTP code to authorize this high-risk action.",
+    title: String = "Confirm Master MPIN",
+    message: String = "Enter your 4-digit Master MPIN to authorize this action.",
     onVerify: (String) -> Boolean,
     onDismiss: () -> Unit,
     onAuthorized: () -> Unit
@@ -70,8 +70,8 @@ fun HighRiskGuardDialog(
     val focusRequester = remember { FocusRequester() }
 
     fun submitCode() {
-        if (code.length != 6) {
-            errorMessage = "Please enter all 6 digits"
+        if (code.length != 4) {
+            errorMessage = "Please enter all 4 digits"
             return
         }
         val verified = onVerify(code)
@@ -80,7 +80,7 @@ fun HighRiskGuardDialog(
             onAuthorized()
             onDismiss()
         } else {
-            errorMessage = "Invalid TOTP code. Check Authenticator app."
+            errorMessage = "Incorrect Master MPIN"
             code = ""
         }
     }
@@ -146,20 +146,20 @@ fun HighRiskGuardDialog(
                     )
                 }
 
-                // 6-Digit Code Visual Input Display
+                // 4-Digit Code Visual Input Display
                 BasicTextField(
                     value = code,
                     onValueChange = { input ->
-                        val digits = input.filter { it.isDigit() }.take(6)
+                        val digits = input.filter { it.isDigit() }.take(4)
                         code = digits
                         errorMessage = null
-                        if (digits.length == 6) {
+                        if (digits.length == 4) {
                             val verified = onVerify(digits)
                             if (verified) {
                                 onAuthorized()
                                 onDismiss()
                             } else {
-                                errorMessage = "Invalid TOTP code"
+                                errorMessage = "Incorrect Master MPIN"
                             }
                         }
                     },
@@ -174,17 +174,17 @@ fun HighRiskGuardDialog(
                     cursorBrush = SolidColor(PurpleGlow),
                     decorationBox = {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            for (i in 0 until 6) {
+                            for (i in 0 until 4) {
                                 val char = code.getOrNull(i)?.toString() ?: ""
                                 val isFocused = code.length == i
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(52.dp)
+                                        .height(56.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Color(0xFF131D31).copy(alpha = 0.8f))
                                         .border(
@@ -200,9 +200,9 @@ fun HighRiskGuardDialog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = char,
-                                        style = MaterialTheme.typography.titleLarge.copy(
-                                            color = if (errorMessage != null) DangerRed else TextPrimary,
+                                        text = if (char.isNotEmpty()) "•" else "",
+                                        style = MaterialTheme.typography.headlineMedium.copy(
+                                            color = if (errorMessage != null) DangerRed else CyberCyan,
                                             fontWeight = FontWeight.Bold,
                                             fontFamily = FontFamily.Monospace
                                         )

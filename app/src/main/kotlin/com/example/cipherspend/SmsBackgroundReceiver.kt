@@ -36,7 +36,6 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = DatabaseProvider.getDatabase(context)
-                val customRules = db.customRuleDao().getAllRules()
                 val predictionService = PredictionService.getInstance(context)
 
                 val autoDropDuplicates = prefs.getString("dedupe_rule", "") == "auto_drop" || prefs.getBoolean("auto_drop_duplicates", false)
@@ -51,7 +50,6 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                         sender = sender,
                         body = body,
                         timestamp = timestamp,
-                        customRules = customRules,
                         predictionService = predictionService
                     )
 
@@ -70,6 +68,8 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                         val rowId = db.transactionDao().insert(parsedTx)
                         if (rowId != -1L) {
                             Log.d("SmsBackgroundReceiver", "Saved transaction: ₹${parsedTx.amount} to ${parsedTx.merchant}")
+                            db.transactionDao().deleteDemoTransactions()
+                            prefs.edit().putBoolean("is_demo_mode", false).apply()
                             predictionService.checkSpendingLimits()
                         }
                     }

@@ -53,9 +53,9 @@ fun StartupScreen(
     onNavigateToUnlock: () -> Unit,
     onNavigateToProfileSetup: () -> Unit
 ) {
-    // 2500ms boot delay before routing
+    // 700ms boot delay before routing
     LaunchedEffect(Unit) {
-        delay(2500)
+        delay(700)
         if (authViewModel.isConfigured.value) {
             onNavigateToUnlock()
         } else {
@@ -187,7 +187,7 @@ fun StartupScreen(
 
             // Terminal status
             Text(
-                text = "INITIALIZING ZERO-KNOWLEDGE VAULT...",
+                text = "SECURING OFFLINE VAULT...",
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = CyberCyan.copy(alpha = 0.7f),
                     fontFamily = FontFamily.Monospace,

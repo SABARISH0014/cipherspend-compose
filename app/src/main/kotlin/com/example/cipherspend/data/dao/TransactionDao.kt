@@ -49,6 +49,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 
+    @Query("DELETE FROM transactions WHERE sender = 'DEMO_MODE'")
+    suspend fun deleteDemoTransactions()
+
     @Query("SELECT SUM(amount) FROM transactions WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp")
     suspend fun getMonthlySpend(startTimestamp: Long, endTimestamp: Long): Double?
 
