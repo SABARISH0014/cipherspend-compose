@@ -1,5 +1,8 @@
 package com.example.cipherspend.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +41,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,6 +64,34 @@ fun MpinSetupScreen(
     authViewModel: AuthViewModel,
     onMpinConfigured: () -> Unit
 ) {
+    val density = LocalDensity.current.density
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    val headerAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "mpinHeaderAlpha"
+    )
+    val headerOffsetY by animateFloatAsState(
+        targetValue = if (isVisible) 0f else 28f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "mpinHeaderOffsetY"
+    )
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 500, delayMillis = 100, easing = FastOutSlowInEasing),
+        label = "mpinContentAlpha"
+    )
+    val contentOffsetY by animateFloatAsState(
+        targetValue = if (isVisible) 0f else 32f,
+        animationSpec = tween(durationMillis = 500, delayMillis = 100, easing = FastOutSlowInEasing),
+        label = "mpinContentOffsetY"
+    )
+
     var enteredPin by remember { mutableStateOf("") }
     var enableBiometric by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -106,7 +140,12 @@ fun MpinSetupScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 48.dp)
+                modifier = Modifier
+                    .padding(top = 48.dp)
+                    .graphicsLayer {
+                        alpha = headerAlpha
+                        translationY = headerOffsetY * density
+                    }
             ) {
                 // Security Icon Box
                 Box(
@@ -182,6 +221,10 @@ fun MpinSetupScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .graphicsLayer {
+                            alpha = contentAlpha
+                            translationY = contentOffsetY * density
+                        }
                         .glassEffect(shape = RoundedCornerShape(18.dp))
                         .padding(horizontal = 18.dp, vertical = 14.dp)
                 ) {
@@ -239,6 +282,10 @@ fun MpinSetupScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        alpha = contentAlpha
+                        translationY = contentOffsetY * density
+                    }
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {

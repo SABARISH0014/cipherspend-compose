@@ -101,7 +101,12 @@ class MainActivity : FragmentActivity() {
                         }
                     ) {
                     // 1. Startup / Terminal Boot Screen
-                    composable("startup") {
+                    composable(
+                        route = "startup",
+                        exitTransition = {
+                            fadeOut(animationSpec = tween(350))
+                        }
+                    ) {
                         StartupScreen(
                             authViewModel = authViewModel,
                             onNavigateToUnlock = {

@@ -49,7 +49,7 @@ interface TransactionDao {
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 
-    @Query("DELETE FROM transactions WHERE sender = 'DEMO_MODE'")
+    @Query("DELETE FROM transactions WHERE sender = 'DEMO_MODE' OR hash LIKE 'DEMO_%'")
     suspend fun deleteDemoTransactions()
 
     @Query("SELECT SUM(amount) FROM transactions WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp AND category != 'Refund'")

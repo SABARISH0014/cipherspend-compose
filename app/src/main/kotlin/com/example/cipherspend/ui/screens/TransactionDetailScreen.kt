@@ -325,6 +325,27 @@ fun TransactionDetailScreen(
                                 style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
                             )
                         }
+
+                        if (currentTx.sender.isNotBlank() &&
+                            currentTx.sender != "DEMO_MODE" &&
+                            currentTx.sender != "MANUAL"
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CyberCyan.copy(alpha = 0.15f))
+                                    .border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = currentTx.sender,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = CyberCyan,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))

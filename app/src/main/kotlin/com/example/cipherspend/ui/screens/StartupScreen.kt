@@ -1,5 +1,6 @@
 package com.example.cipherspend.ui.screens
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,12 +28,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,6 +49,7 @@ import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun StartupScreen(
@@ -53,9 +57,24 @@ fun StartupScreen(
     onNavigateToUnlock: () -> Unit,
     onNavigateToProfileSetup: () -> Unit
 ) {
-    // 700ms boot delay before routing
+    val density = LocalDensity.current.density
+    val screenScale = remember { Animatable(0.85f) }
+    val screenAlpha = remember { Animatable(0f) }
+
+    // Smooth entry, 700ms boot, then 220ms smooth exit transition before routing
     LaunchedEffect(Unit) {
+        launch {
+            screenScale.animateTo(1f, animationSpec = tween(450, easing = FastOutSlowInEasing))
+        }
+        launch {
+            screenAlpha.animateTo(1f, animationSpec = tween(400, easing = FastOutSlowInEasing))
+        }
         delay(700)
+        launch {
+            screenScale.animateTo(1.05f, animationSpec = tween(220, easing = FastOutSlowInEasing))
+        }
+        screenAlpha.animateTo(0f, animationSpec = tween(220, easing = FastOutSlowInEasing))
+
         if (authViewModel.isConfigured.value) {
             onNavigateToUnlock()
         } else {
@@ -95,12 +114,22 @@ fun StartupScreen(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier
+                .padding(24.dp)
+                .graphicsLayer {
+                    scaleX = screenScale.value
+                    scaleY = screenScale.value
+                    alpha = screenAlpha.value
+                }
         ) {
-            // Center Glowing Orb Icon
+            // Center Glowing Orb Icon (GPU RenderThread scaled via graphicsLayer)
             Box(
                 modifier = Modifier
-                    .size(120.dp * pulseScale)
+                    .size(120.dp)
+                    .graphicsLayer {
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                    }
                     .shadow(
                         elevation = 32.dp,
                         shape = CircleShape,
@@ -160,7 +189,7 @@ fun StartupScreen(
 
             Spacer(modifier = Modifier.height(36.dp))
 
-            // Animated Terminal Scan Indicator Bar
+            // Animated Terminal Scan Indicator Bar (GPU RenderThread translated via graphicsLayer)
             Box(
                 modifier = Modifier
                     .width(140.dp)
@@ -171,7 +200,9 @@ fun StartupScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .offset(x = progressOffset.dp)
+                        .graphicsLayer {
+                            translationX = progressOffset * density
+                        }
                         .width(42.dp)
                         .height(3.dp)
                         .clip(RoundedCornerShape(2.dp))

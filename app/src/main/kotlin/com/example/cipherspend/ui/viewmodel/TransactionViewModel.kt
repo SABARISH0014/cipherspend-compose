@@ -61,12 +61,15 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     private val generalPrefs = application.getSharedPreferences("CipherSpendPrefs", android.content.Context.MODE_PRIVATE)
 
     private val _isDemoMode = MutableStateFlow(generalPrefs.getBoolean("is_demo_mode", false))
-    val isDemoMode: StateFlow<Boolean> = _isDemoMode.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val rawTransactions = _dbEpoch.flatMapLatest {
         db.transactionDao().getAllTransactionsFlow()
     }
+
+    val isDemoMode: StateFlow<Boolean> = combine(_isDemoMode, rawTransactions) { flag, list ->
+        flag || list.any { it.sender == "DEMO_MODE" || it.hash.startsWith("DEMO_") }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val transactions: StateFlow<List<TransactionEntity>> = combine(
         rawTransactions,
@@ -273,8 +276,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
             val demoList = listOf(
                 TransactionEntity(
-                    hash = "demo_hash_swiggy",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_swiggy",
+                    sender = "HDFC ••6334",
                     body = "Paid Rs 420.00 to Swiggy via UPI",
                     amount = 420.0,
                     category = "Food & Dining",
@@ -283,8 +286,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (1 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_amazon",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_amazon",
+                    sender = "SBI ••1209",
                     body = "Spent Rs 1899.00 on Amazon with Card ending 4412",
                     amount = 1899.0,
                     category = "Shopping",
@@ -293,8 +296,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (2 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_uber",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_uber",
+                    sender = "ICICI ••4510",
                     body = "Paid Rs 265.00 to Uber via UPI",
                     amount = 265.0,
                     category = "Travel",
@@ -303,8 +306,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (3 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_airtel",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_airtel",
+                    sender = "Axis ••8841",
                     body = "Paid Rs 999.00 to Airtel Broadband via UPI",
                     amount = 999.0,
                     category = "Bills & Utilities",
@@ -313,8 +316,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (4 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_zerodha",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_zerodha",
+                    sender = "Kotak ••3321",
                     body = "Transferred Rs 5000.00 to Zerodha SIP via Bank Transfer",
                     amount = 5000.0,
                     category = "Investment",
@@ -323,8 +326,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (5 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_starbucks",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_starbucks",
+                    sender = "AMEX ••1004",
                     body = "Spent Rs 380.00 at Starbucks with Card ending 8911",
                     amount = 380.0,
                     category = "Food & Dining",
@@ -333,8 +336,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (6 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_zomato",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_zomato",
+                    sender = "OneCard ••9215",
                     body = "Paid Rs 540.00 to Zomato via UPI",
                     amount = 540.0,
                     category = "Food & Dining",
@@ -343,8 +346,8 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
                     timestamp = now - (7 * dayMillis)
                 ),
                 TransactionEntity(
-                    hash = "demo_hash_hpcl",
-                    sender = "DEMO_MODE",
+                    hash = "DEMO_hpcl",
+                    sender = "HDFC ••6334",
                     body = "Spent Rs 1200.00 at HPCL Fuel with Card ending 4412",
                     amount = 1200.0,
                     category = "Travel",
@@ -361,9 +364,9 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
     fun exitDemoMode() {
         viewModelScope.launch(Dispatchers.IO) {
-            db.transactionDao().deleteDemoTransactions()
             _isDemoMode.value = false
             generalPrefs.edit().putBoolean("is_demo_mode", false).apply()
+            db.transactionDao().deleteDemoTransactions()
             refreshForecast()
         }
     }
@@ -407,6 +410,7 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     fun setMonthlyBudget(newBudget: Float) {
         val prefs = getApplication<Application>().getSharedPreferences("CipherSpendPrefs", android.content.Context.MODE_PRIVATE)
         prefs.edit().putFloat("monthly_budget", newBudget).apply()
+        _dbEpoch.value++
         refreshForecast()
     }
 

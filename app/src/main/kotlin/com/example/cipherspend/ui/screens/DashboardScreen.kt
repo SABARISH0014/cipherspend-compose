@@ -50,6 +50,15 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,6 +76,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.components.MonthSelector
@@ -120,6 +134,41 @@ fun DashboardScreen(
         )
     }
 
+    fun refreshPermissionsState() {
+        val smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        val notifGranted = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+            ?.contains(context.packageName) == true
+
+        if (!hasSmsPermission && smsGranted) {
+            viewModel.exitDemoMode()
+            coroutineScope.launch {
+                SmsSyncManager.syncInbox(context, fullRescan = true)
+            }
+        }
+        hasSmsPermission = smsGranted
+        hasNotifListener = notifGranted
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshPermissionsState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val notifSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        refreshPermissionsState()
+    }
+
     var showPrivacyDisclosure by remember { mutableStateOf(false) }
     var pendingPermissionAction by remember { mutableStateOf<String?>(null) }
 
@@ -140,16 +189,8 @@ fun DashboardScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { perms ->
-        val granted = perms[Manifest.permission.RECEIVE_SMS] == true &&
-                perms[Manifest.permission.READ_SMS] == true
-        hasSmsPermission = granted
-        if (granted) {
-            viewModel.exitDemoMode()
-            coroutineScope.launch {
-                SmsSyncManager.syncInbox(context, fullRescan = true)
-            }
-        }
+    ) {
+        refreshPermissionsState()
     }
 
     LazyColumn(
@@ -529,8 +570,12 @@ fun DashboardScreen(
         }
 
         // Contextual Permissions Banner (HCI Requirement)
-        if (!hasSmsPermission || !hasNotifListener) {
-            item {
+        item {
+            AnimatedVisibility(
+                visible = !hasSmsPermission || !hasNotifListener,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -746,10 +791,47 @@ fun DashboardScreen(
             }
         } else {
             items(transactions, key = { it.id }) { tx ->
-                TransactionRowItem(
-                    transaction = tx,
-                    onClick = { onNavigateToDetail(tx.id) }
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.deleteTransaction(tx)
+                            CipherSnackbarManager.showMessage("Transaction deleted")
+                            true
+                        } else false
+                    }
                 )
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    enableDismissFromEndToStart = true,
+                    backgroundContent = {
+                        val isDismissing = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (isDismissing) DangerRed.copy(alpha = 0.85f) else Color.Transparent)
+                                .padding(end = 20.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            if (isDismissing) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Transaction",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    TransactionRowItem(
+                        transaction = tx,
+                        onClick = { onNavigateToDetail(tx.id) }
+                    )
+                }
             }
         }
 
@@ -778,10 +860,8 @@ fun DashboardScreen(
                     permissionLauncher.launch(permissions.toTypedArray())
                 } else if (action == "NOTIF") {
                     try {
-                        context.startActivity(
-                            Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
+                        notifSettingsLauncher.launch(
+                            Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
                         )
                     } catch (_: Exception) {}
                 }
@@ -996,10 +1076,35 @@ fun TransactionRowItem(
                         fontWeight = FontWeight.Bold
                     )
                 )
-                Text(
-                    text = transaction.type,
-                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
-                )
+                Spacer(modifier = Modifier.height(3.dp))
+                val isRealSender = transaction.sender.isNotBlank() &&
+                        transaction.sender != "DEMO_MODE" &&
+                        transaction.sender != "MANUAL"
+                val sourceLabel = if (isRealSender) {
+                    "${transaction.type} • ${transaction.sender}"
+                } else {
+                    transaction.type
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isRealSender) CyberCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.05f))
+                        .border(
+                            0.5.dp,
+                            if (isRealSender) CyberCyan.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.1f),
+                            RoundedCornerShape(6.dp)
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = sourceLabel,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = if (isRealSender) CyberCyan else TextMuted,
+                            fontSize = 10.sp,
+                            fontWeight = if (isRealSender) FontWeight.Medium else FontWeight.Normal
+                        )
+                    )
+                }
             }
         }
     }

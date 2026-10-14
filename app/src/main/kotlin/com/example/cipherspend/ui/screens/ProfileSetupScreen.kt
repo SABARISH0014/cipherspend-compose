@@ -1,6 +1,9 @@
 package com.example.cipherspend.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,7 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -61,7 +67,35 @@ fun ProfileSetupScreen(
     onProfileSaved: () -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current.density
     val scrollState = rememberScrollState()
+
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    val headerAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "headerAlpha"
+    )
+    val headerOffsetY by animateFloatAsState(
+        targetValue = if (isVisible) 0f else 28f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "headerOffsetY"
+    )
+
+    val formAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 500, delayMillis = 100, easing = FastOutSlowInEasing),
+        label = "formAlpha"
+    )
+    val formOffsetY by animateFloatAsState(
+        targetValue = if (isVisible) 0f else 32f,
+        animationSpec = tween(durationMillis = 500, delayMillis = 100, easing = FastOutSlowInEasing),
+        label = "formOffsetY"
+    )
 
     var userName by remember { mutableStateOf("") }
     var targetBudget by remember { mutableStateOf("25000") }
@@ -114,7 +148,12 @@ fun ProfileSetupScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 48.dp)
+                modifier = Modifier
+                    .padding(top = 48.dp)
+                    .graphicsLayer {
+                        alpha = headerAlpha
+                        translationY = headerOffsetY * density
+                    }
             ) {
                 // Header Profile Orb Icon
                 Box(
@@ -159,6 +198,10 @@ fun ProfileSetupScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .graphicsLayer {
+                            alpha = formAlpha
+                            translationY = formOffsetY * density
+                        }
                         .glassEffect(shape = RoundedCornerShape(20.dp))
                         .padding(20.dp)
                 ) {
@@ -270,6 +313,10 @@ fun ProfileSetupScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        alpha = formAlpha
+                        translationY = formOffsetY * density
+                    }
                     .padding(bottom = 36.dp, top = 24.dp)
             ) {
                 Button(

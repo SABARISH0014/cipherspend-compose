@@ -49,6 +49,53 @@ object SmsParser {
         Pattern.compile("""(?:loan|pre-approved|limit increase)""", Pattern.CASE_INSENSITIVE)
     )
 
+    private val ACCOUNT_LAST4_REGEX = Pattern.compile(
+        """(?i)(?:a/c|acct|account|card)\s*(?:no\.?|ending|xx+|\*+|\s)*[xX*]*([0-9]{3,4})\b"""
+    )
+
+    fun formatAccountSource(sender: String, body: String): String {
+        val sUpper = sender.uppercase()
+        val bUpper = body.uppercase()
+
+        val bank: String? = when {
+            sUpper.contains("HDFC") || bUpper.contains("HDFC") -> "HDFC"
+            sUpper.contains("SBI") || sUpper.contains("SBIN") || bUpper.contains("SBI ") || bUpper.contains("STATE BANK") -> "SBI"
+            sUpper.contains("ICICI") || bUpper.contains("ICICI") -> "ICICI"
+            sUpper.contains("AXIS") || bUpper.contains("AXIS") -> "Axis"
+            sUpper.contains("KOTAK") || bUpper.contains("KOTAK") -> "Kotak"
+            sUpper.contains("BOB") || sUpper.contains("BAROD") || bUpper.contains("BANK OF BARODA") || bUpper.contains("BOB ") -> "BOB"
+            sUpper.contains("PNB") || bUpper.contains("PUNJAB NATIONAL") || bUpper.contains("PNB ") -> "PNB"
+            sUpper.contains("CANARA") || sUpper.contains("CANBNK") || bUpper.contains("CANARA") -> "Canara"
+            sUpper.contains("INDUS") || bUpper.contains("INDUSIND") -> "IndusInd"
+            sUpper.contains("IDFC") || bUpper.contains("IDFC") -> "IDFC"
+            sUpper.contains("YESB") || bUpper.contains("YES BANK") || bUpper.contains("YESBANK") -> "Yes Bank"
+            sUpper.contains("FED") || bUpper.contains("FEDERAL BANK") -> "Federal"
+            sUpper.contains("AMEX") || bUpper.contains("AMERICAN EXPRESS") -> "AMEX"
+            sUpper.contains("ONECARD") || bUpper.contains("ONECARD") -> "OneCard"
+            sUpper.contains("SLICE") || bUpper.contains("SLICE") -> "Slice"
+            sUpper.contains("GPAY") || bUpper.contains("GOOGLE PAY") -> "GPay"
+            sUpper.contains("PHONEPE") || bUpper.contains("PHONEPE") -> "PhonePe"
+            sUpper.contains("PAYTM") || bUpper.contains("PAYTM") -> "Paytm"
+            sUpper.contains("BHIM") || bUpper.contains("BHIM") -> "BHIM"
+            sUpper.contains("CRED") || bUpper.contains("CRED") -> "Cred"
+            else -> null
+        }
+
+        val matcher = ACCOUNT_LAST4_REGEX.matcher(body)
+        val last4: String? = if (matcher.find()) {
+            matcher.group(1)
+        } else {
+            null
+        }
+
+        return when {
+            bank != null && last4 != null -> "$bank ••$last4"
+            last4 != null -> "A/c ••$last4"
+            bank != null -> bank
+            else -> sender
+        }
+    }
+
     fun isSpam(cleanBody: String): Boolean {
         for (pattern in SPAM_PATTERNS) {
             if (pattern.matcher(cleanBody).find()) return true
@@ -125,10 +172,15 @@ object SmsParser {
         }
 
         val hash = generateHash(sender, cleanBody, timestamp)
+        val finalSender = if (sender == "DEMO_MODE" || sender == "MANUAL") {
+            sender
+        } else {
+            formatAccountSource(sender, cleanBody)
+        }
 
         return TransactionEntity(
             hash = hash,
-            sender = sender,
+            sender = finalSender,
             body = cleanBody,
             amount = amount,
             category = category,

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,11 +32,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,9 +44,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.example.cipherspend.ui.screens.AnalyticsScreen
 import com.example.cipherspend.ui.screens.DashboardScreen
 import com.example.cipherspend.ui.screens.SearchScreen
@@ -61,13 +57,11 @@ import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.bounceClick
 import com.example.cipherspend.ui.theme.glassEffect
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
+import kotlinx.coroutines.launch
 
 sealed class TabItem(val route: String, val title: String, val icon: ImageVector) {
     object Transactions : TabItem("transactions", "History", Icons.AutoMirrored.Filled.ReceiptLong)
@@ -87,9 +81,9 @@ fun MainAppScaffold(
     onNavigateToProfileEdit: () -> Unit = {},
     onNuclearWipeComplete: () -> Unit = {}
 ) {
-    val navController = rememberNavController()
+    val pagerState = rememberPagerState(pageCount = { 4 })
+    val coroutineScope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -121,15 +115,12 @@ fun MainAppScaffold(
                         // 1. Transactions Tab
                         BottomNavTab(
                             item = TabItem.Transactions,
-                            isSelected = selectedTab == 0,
+                            isSelected = pagerState.currentPage == 0,
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selectedTab = 0
-                                navController.navigate(TabItem.Transactions.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(0)
                                 }
                             }
                         )
@@ -137,15 +128,12 @@ fun MainAppScaffold(
                         // 2. Analytics Tab
                         BottomNavTab(
                             item = TabItem.Analytics,
-                            isSelected = selectedTab == 1,
+                            isSelected = pagerState.currentPage == 1,
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selectedTab = 1
-                                navController.navigate(TabItem.Analytics.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(1)
                                 }
                             }
                         )
@@ -188,15 +176,12 @@ fun MainAppScaffold(
                         // 4. Search Tab
                         BottomNavTab(
                             item = TabItem.Search,
-                            isSelected = selectedTab == 2,
+                            isSelected = pagerState.currentPage == 2,
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selectedTab = 2
-                                navController.navigate(TabItem.Search.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(2)
                                 }
                             }
                         )
@@ -204,15 +189,12 @@ fun MainAppScaffold(
                         // 5. Settings Tab
                         BottomNavTab(
                             item = TabItem.Settings,
-                            isSelected = selectedTab == 3,
+                            isSelected = pagerState.currentPage == 3,
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selectedTab = 3
-                                navController.navigate(TabItem.Settings.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(3)
                                 }
                             }
                         )
@@ -228,38 +210,24 @@ fun MainAppScaffold(
         ) {
             AmbientGlowBackdrop()
 
-            NavHost(
-                navController = navController,
-                startDestination = TabItem.Transactions.route,
-                enterTransition = { fadeIn(animationSpec = tween(250)) },
-                exitTransition = { fadeOut(animationSpec = tween(250)) },
-                popEnterTransition = { fadeIn(animationSpec = tween(250)) },
-                popExitTransition = { fadeOut(animationSpec = tween(250)) }
-            ) {
-                composable(TabItem.Transactions.route) {
-                    selectedTab = 0
-                    DashboardScreen(
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (page) {
+                    0 -> DashboardScreen(
                         viewModel = transactionViewModel,
                         onNavigateToDetail = onNavigateToDetail,
                         onNavigateToNotifications = onNavigateToNotifications,
                         onNavigateToProfileEdit = onNavigateToProfileEdit,
                         onNavigateToManualEntry = onNavigateToManualEntry
                     )
-                }
-                composable(TabItem.Analytics.route) {
-                    selectedTab = 1
-                    AnalyticsScreen(viewModel = transactionViewModel)
-                }
-                composable(TabItem.Search.route) {
-                    selectedTab = 2
-                    SearchScreen(
+                    1 -> AnalyticsScreen(viewModel = transactionViewModel)
+                    2 -> SearchScreen(
                         viewModel = transactionViewModel,
                         onNavigateToDetail = onNavigateToDetail
                     )
-                }
-                composable(TabItem.Settings.route) {
-                    selectedTab = 3
-                    SettingsScreen(
+                    3 -> SettingsScreen(
                         authViewModel = authViewModel,
                         transactionViewModel = transactionViewModel,
                         onLockVault = onLockVault,
