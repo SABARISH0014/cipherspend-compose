@@ -5,8 +5,10 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,6 +88,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val haptics = LocalHapticFeedback.current
 
     val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
 
@@ -270,7 +273,10 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onLockVault() },
+                            .clickable {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onLockVault()
+                            },
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -433,7 +439,7 @@ fun SettingsScreen(
                                         val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                                         context.startActivity(fallbackIntent)
                                     } catch (_: Exception) {
-                                        Toast.makeText(context, "Could not open battery settings", Toast.LENGTH_SHORT).show()
+                                        CipherSnackbarManager.showMessage("Could not open battery settings", isError = true)
                                     }
                                 }
                             },
@@ -622,7 +628,7 @@ fun SettingsScreen(
                                 context.startActivity(intent)
                             } catch (_: Exception) {
                                 clipboardManager.setText(AnnotatedString(candidateTotpSecret))
-                                Toast.makeText(context, "Secret copied to clipboard. Open your Authenticator app manually.", Toast.LENGTH_SHORT).show()
+                                CipherSnackbarManager.showMessage("Secret copied to clipboard")
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(44.dp),
@@ -638,7 +644,7 @@ fun SettingsScreen(
                             .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = Color(0xFF131B2A))
                             .clickable {
                                 clipboardManager.setText(AnnotatedString(candidateTotpSecret))
-                                Toast.makeText(context, "Secret copied to clipboard", Toast.LENGTH_SHORT).show()
+                                CipherSnackbarManager.showMessage("Secret copied to clipboard")
                             }
                             .padding(12.dp)
                     ) {
@@ -679,11 +685,11 @@ fun SettingsScreen(
                     onClick = {
                         val verified = authViewModel.verifyAndEnableTotp(candidateTotpSecret, totpInputCode)
                         if (verified) {
-                            Toast.makeText(context, "TOTP Advanced Vault Activated!", Toast.LENGTH_SHORT).show()
+                            CipherSnackbarManager.showMessage("TOTP Advanced Vault Activated!")
                             showTotpDialog = false
                             totpInputCode = ""
                         } else {
-                            Toast.makeText(context, "Invalid OTP code", Toast.LENGTH_SHORT).show()
+                            CipherSnackbarManager.showMessage("Invalid OTP code", isError = true)
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PurpleGlow)
@@ -787,9 +793,10 @@ fun SettingsScreen(
             onVerify = { code -> authViewModel.verifyCurrentTotp(code) },
             onDismiss = { showTotpGuardForPurge = false },
             onAuthorized = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 showTotpGuardForPurge = false
                 authViewModel.nuclearWipe()
-                Toast.makeText(context, "Kill switch executed. Vault destroyed.", Toast.LENGTH_SHORT).show()
+                CipherSnackbarManager.showMessage("Account & data erased. Vault destroyed.")
                 onNuclearWipeComplete()
             }
         )

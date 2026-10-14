@@ -1,7 +1,6 @@
 package com.example.cipherspend.ui.screens
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -60,12 +59,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.cipherspend.data.model.TransactionEntity
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.PurpleGlow
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.bounceClick
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
@@ -125,9 +126,9 @@ fun SearchScreen(
                 }
                 writer.flush()
             }
-            Toast.makeText(context, "Exported ${searchResults.size} transactions to CSV", Toast.LENGTH_SHORT).show()
+            CipherSnackbarManager.showMessage("Exported ${searchResults.size} transactions to CSV")
         } catch (e: Exception) {
-            Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            CipherSnackbarManager.showMessage("Export failed: ${e.message}", isError = true)
         }
     }
 
@@ -164,7 +165,7 @@ fun SearchScreen(
                     .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
                     .clickable {
                         if (searchResults.isEmpty()) {
-                            Toast.makeText(context, "No transactions found to export", Toast.LENGTH_SHORT).show()
+                            CipherSnackbarManager.showMessage("No transactions found to export", isError = true)
                         } else {
                             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                             exportLauncher.launch("CipherSpend_Export_$timestamp.csv")
@@ -492,7 +493,8 @@ fun SearchScreen(
                         onClick = { showFilterDialog = false },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(48.dp)
+                            .bounceClick(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                     ) {

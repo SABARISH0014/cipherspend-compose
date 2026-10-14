@@ -17,6 +17,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import com.example.cipherspend.ui.components.CipherSnackbarHost
 import com.example.cipherspend.ui.components.MainAppScaffold
 import com.example.cipherspend.ui.screens.AppNotificationsScreen
 import com.example.cipherspend.ui.screens.InteractiveTrainingScreen
@@ -67,10 +75,35 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "startup"
-                ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "startup",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(300)
+                            ) + fadeIn(animationSpec = tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(300)
+                            ) + fadeOut(animationSpec = tween(300))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(300)
+                            ) + fadeIn(animationSpec = tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(300)
+                            ) + fadeOut(animationSpec = tween(300))
+                        }
+                    ) {
                     // 1. Startup / Terminal Boot Screen
                     composable("startup") {
                         StartupScreen(
@@ -263,6 +296,10 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                 }
+
+                // Global Glassmorphic In-App Snackbar Host
+                CipherSnackbarHost()
+            }
             }
         }
     }

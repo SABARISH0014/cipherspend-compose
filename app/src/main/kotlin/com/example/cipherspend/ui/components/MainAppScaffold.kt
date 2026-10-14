@@ -59,7 +59,13 @@ import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.SurfaceDark
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
+import com.example.cipherspend.ui.theme.bounceClick
 import com.example.cipherspend.ui.theme.glassEffect
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 
@@ -82,6 +88,7 @@ fun MainAppScaffold(
     onNuclearWipeComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val haptics = LocalHapticFeedback.current
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
@@ -117,6 +124,7 @@ fun MainAppScaffold(
                             isSelected = selectedTab == 0,
                             modifier = Modifier.weight(1f),
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 selectedTab = 0
                                 navController.navigate(TabItem.Transactions.route) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -132,6 +140,7 @@ fun MainAppScaffold(
                             isSelected = selectedTab == 1,
                             modifier = Modifier.weight(1f),
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 selectedTab = 1
                                 navController.navigate(TabItem.Analytics.route) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -150,6 +159,7 @@ fun MainAppScaffold(
                             Box(
                                 modifier = Modifier
                                     .size(50.dp)
+                                    .bounceClick()
                                     .shadow(elevation = 10.dp, shape = CircleShape, spotColor = CyberCyan)
                                     .clip(CircleShape)
                                     .background(
@@ -161,6 +171,7 @@ fun MainAppScaffold(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(bounded = true, color = Color.White)
                                     ) {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         onNavigateToManualEntry()
                                     },
                                 contentAlignment = Alignment.Center
@@ -180,6 +191,7 @@ fun MainAppScaffold(
                             isSelected = selectedTab == 2,
                             modifier = Modifier.weight(1f),
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 selectedTab = 2
                                 navController.navigate(TabItem.Search.route) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -195,6 +207,7 @@ fun MainAppScaffold(
                             isSelected = selectedTab == 3,
                             modifier = Modifier.weight(1f),
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 selectedTab = 3
                                 navController.navigate(TabItem.Settings.route) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -217,7 +230,11 @@ fun MainAppScaffold(
 
             NavHost(
                 navController = navController,
-                startDestination = TabItem.Transactions.route
+                startDestination = TabItem.Transactions.route,
+                enterTransition = { fadeIn(animationSpec = tween(250)) },
+                exitTransition = { fadeOut(animationSpec = tween(250)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(250)) },
+                popExitTransition = { fadeOut(animationSpec = tween(250)) }
             ) {
                 composable(TabItem.Transactions.route) {
                     selectedTab = 0

@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
@@ -55,6 +57,8 @@ fun MonthSelector(
         selectedMonth == YearMonth.now()
     }
 
+    val haptics = LocalHapticFeedback.current
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -70,7 +74,10 @@ fun MonthSelector(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(bounded = true, color = CyberCyan)
-                ) { onPreviousMonth() },
+                ) {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onPreviousMonth()
+                },
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -92,6 +99,7 @@ fun MonthSelector(
                     borderColor = if (isCurrentMonth) CyberCyan.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f)
                 )
                 .clickable(enabled = !isCurrentMonth && onCurrentMonth != null) {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onCurrentMonth?.invoke()
                 }
                 .padding(horizontal = 22.dp, vertical = 9.dp),
@@ -118,7 +126,10 @@ fun MonthSelector(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(bounded = true, color = CyberCyan)
-                ) { onNextMonth() },
+                ) {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onNextMonth()
+                },
             contentAlignment = Alignment.Center
         ) {
             Icon(

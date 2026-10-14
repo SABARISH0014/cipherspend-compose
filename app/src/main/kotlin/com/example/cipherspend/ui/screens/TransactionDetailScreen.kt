@@ -1,7 +1,9 @@
 package com.example.cipherspend.ui.screens
 
 import android.content.Context
-import android.widget.Toast
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -143,6 +145,7 @@ fun TransactionDetailScreen(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val haptics = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
 
     val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
@@ -246,8 +249,9 @@ fun TransactionDetailScreen(
 
                 IconButton(
                     onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.deleteTransaction(currentTx)
-                        Toast.makeText(context, "Transaction deleted and blacklisted", Toast.LENGTH_SHORT).show()
+                        CipherSnackbarManager.showMessage("Transaction deleted and blacklisted")
                         onNavigateBack()
                     }
                 ) {
@@ -381,9 +385,10 @@ fun TransactionDetailScreen(
                                     )
                                     .clickable {
                                         if (cat != currentTx.category) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             viewModel.updateTransactionCategory(currentTx.id, cat)
                                             transaction = currentTx.copy(category = cat)
-                                            Toast.makeText(context, "Category changed to $cat", Toast.LENGTH_SHORT).show()
+                                            CipherSnackbarManager.showMessage("Category changed to $cat")
                                         }
                                     }
                                     .padding(horizontal = 12.dp, vertical = 7.dp)
@@ -465,11 +470,7 @@ fun TransactionDetailScreen(
                                     viewModel.updateMerchantCorrection(currentTx.id, editedMerchantName)
                                     transaction = currentTx.copy(merchant = editedMerchantName)
                                     isEditingMerchant = false
-                                    Toast.makeText(
-                                        context,
-                                        "Merchant updated & pattern rule saved silently",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    CipherSnackbarManager.showMessage("Merchant updated & pattern rule saved")
                                 },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
@@ -515,7 +516,7 @@ fun TransactionDetailScreen(
                         IconButton(
                             onClick = {
                                 clipboardManager.setText(AnnotatedString(currentTx.body))
-                                Toast.makeText(context, "Copied raw body", Toast.LENGTH_SHORT).show()
+                                CipherSnackbarManager.showMessage("Copied raw body")
                             }
                         ) {
                             Icon(

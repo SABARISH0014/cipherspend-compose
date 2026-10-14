@@ -2,7 +2,6 @@ package com.example.cipherspend.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,6 +60,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
@@ -101,7 +101,7 @@ fun VerifySetupScreen(
         if (isValid) {
             errorMessage = null
             focusManager.clearFocus()
-            Toast.makeText(context, "Authenticator verified successfully", Toast.LENGTH_SHORT).show()
+            CipherSnackbarManager.showMessage("Authenticator verified successfully")
             onVerificationSuccess()
         } else {
             errorMessage = "Invalid verification code. Please check your authenticator and try again."
@@ -228,7 +228,7 @@ fun VerifySetupScreen(
                         IconButton(
                             onClick = {
                                 clipboardManager.setText(AnnotatedString(secret))
-                                Toast.makeText(context, "Key copied to clipboard", Toast.LENGTH_SHORT).show()
+                                CipherSnackbarManager.showMessage("Key copied to clipboard")
                             }
                         ) {
                             Icon(
@@ -252,11 +252,10 @@ fun VerifySetupScreen(
                             val intent = Intent(Intent.ACTION_VIEW, uri)
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
+                            CipherSnackbarManager.showMessage(
                                 "Copy the secret key and open your Authenticator app manually",
-                                Toast.LENGTH_LONG
-                            ).show()
+                                isError = true
+                            )
                         }
                     },
                     modifier = Modifier

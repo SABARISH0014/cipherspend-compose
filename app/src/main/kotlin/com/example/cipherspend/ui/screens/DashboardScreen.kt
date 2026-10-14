@@ -52,7 +52,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,6 +83,7 @@ fun DashboardScreen(
     onNavigateToManualEntry: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val transactions by viewModel.transactions.collectAsState()
     val forecast by viewModel.forecast.collectAsState()
     val selectedMonth by viewModel.selectedMonth.collectAsState()
@@ -208,8 +211,14 @@ fun DashboardScreen(
         item {
             MonthSelector(
                 selectedMonth = selectedMonth,
-                onPreviousMonth = { viewModel.selectPreviousMonth() },
-                onNextMonth = { viewModel.selectNextMonth() }
+                onPreviousMonth = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.selectPreviousMonth()
+                },
+                onNextMonth = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.selectNextMonth()
+                }
             )
         }
 

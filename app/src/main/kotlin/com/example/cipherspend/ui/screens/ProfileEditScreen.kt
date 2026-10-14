@@ -3,7 +3,6 @@ package com.example.cipherspend.ui.screens
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -70,6 +69,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.components.HighRiskGuardDialog
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
 import com.example.cipherspend.ui.theme.CyberCyan
@@ -146,7 +146,7 @@ fun ProfileEditScreen(
             .apply()
 
         transactionViewModel.setMonthlyBudget(budgetVal)
-        Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+        CipherSnackbarManager.showMessage("Profile updated successfully")
         onNavigateBack()
     }
 
@@ -593,7 +593,7 @@ fun ProfileEditScreen(
                         val success = authViewModel.changeMpin(newMpin)
                         if (success) {
                             showChangeMpinDialog = false
-                            Toast.makeText(context, "MPIN updated and vault re-keyed", Toast.LENGTH_SHORT).show()
+                            CipherSnackbarManager.showMessage("MPIN updated and vault re-keyed")
                         } else {
                             mpinError = "Failed to update MPIN"
                         }

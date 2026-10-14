@@ -1,6 +1,5 @@
 package com.example.cipherspend.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.data.db.DatabaseProvider
 import com.example.cipherspend.data.model.CustomRuleEntity
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -192,7 +192,7 @@ fun InteractiveTrainingScreen(
             }
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Regex rule saved successfully", Toast.LENGTH_SHORT).show()
+                CipherSnackbarManager.showMessage("Regex rule saved successfully")
                 onNavigateBack()
             }
         }

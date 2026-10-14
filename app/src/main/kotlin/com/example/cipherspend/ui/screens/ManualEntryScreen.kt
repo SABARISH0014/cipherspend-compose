@@ -1,6 +1,5 @@
 package com.example.cipherspend.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,11 +51,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
@@ -64,6 +66,7 @@ import com.example.cipherspend.ui.theme.DarkBackground
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.bounceClick
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
@@ -77,6 +80,7 @@ fun ManualEntryScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
 
     var amountText by remember { mutableStateOf("") }
@@ -97,6 +101,7 @@ fun ManualEntryScreen(
             return
         }
 
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         val cleanMerchant = merchantText.trim().ifBlank { "Manual Entry" }
         viewModel.insertManualTransaction(
             amount = amt,
@@ -105,7 +110,7 @@ fun ManualEntryScreen(
             type = selectedType,
             timestamp = selectedDateMillis
         )
-        Toast.makeText(context, "Transaction saved to offline vault", Toast.LENGTH_SHORT).show()
+        CipherSnackbarManager.showMessage("Transaction saved to offline vault")
         onNavigateBack()
     }
 
@@ -294,7 +299,10 @@ fun ManualEntryScreen(
                                                     if (isSelected) CyberCyan else Color.White.copy(alpha = 0.12f),
                                                     RoundedCornerShape(12.dp)
                                                 )
-                                                .clickable { selectedCategory = cat }
+                                                .clickable {
+                                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    selectedCategory = cat
+                                                }
                                                 .padding(horizontal = 14.dp, vertical = 9.dp)
                                         ) {
                                             Text(
@@ -331,7 +339,10 @@ fun ManualEntryScreen(
                                                     if (isSelected) NeonEmerald else Color.White.copy(alpha = 0.12f),
                                                     RoundedCornerShape(12.dp)
                                                 )
-                                                .clickable { selectedType = t }
+                                                .clickable {
+                                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    selectedType = t
+                                                }
                                                 .padding(horizontal = 14.dp, vertical = 9.dp)
                                         ) {
                                             Text(
@@ -368,6 +379,7 @@ fun ManualEntryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp)
+                            .bounceClick()
                             .shadow(
                                 elevation = 12.dp,
                                 shape = RoundedCornerShape(16.dp),
