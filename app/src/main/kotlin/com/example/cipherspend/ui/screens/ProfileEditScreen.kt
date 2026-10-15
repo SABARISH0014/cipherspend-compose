@@ -1,8 +1,11 @@
 package com.example.cipherspend.ui.screens
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import java.io.File
+import java.io.FileOutputStream
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -112,8 +116,48 @@ fun ProfileEditScreen(
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            profileImage = it.toString()
+        uri?.let { selectedUri ->
+            try {
+                val inputStream = context.contentResolver.openInputStream(selectedUri)
+                val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (originalBitmap != null) {
+                    val maxDim = 512
+                    val width = originalBitmap.width
+                    val height = originalBitmap.height
+                    val (newWidth, newHeight) = if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            maxDim to ((height.toFloat() / width) * maxDim).toInt()
+                        } else {
+                            (((width.toFloat() / height) * maxDim).toInt()) to maxDim
+                        }
+                    } else {
+                        width to height
+                    }
+
+                    val scaledBitmap = if (newWidth != width || newHeight != height) {
+                        Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+                    } else {
+                        originalBitmap
+                    }
+
+                    // Delete previous user_avatar_*.png files in filesDir
+                    context.filesDir.listFiles { file ->
+                        file.name.startsWith("user_avatar_") && file.name.endsWith(".png")
+                    }?.forEach { it.delete() }
+
+                    // Save as new PNG to persist across app restarts
+                    val savedFile = File(context.filesDir, "user_avatar_${System.currentTimeMillis()}.png")
+                    FileOutputStream(savedFile).use { out ->
+                        scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+
+                    profileImage = "file://${savedFile.absolutePath}"
+                }
+            } catch (e: Exception) {
+                CipherSnackbarManager.showMessage("Failed to load avatar", isError = true)
+            }
             showAvatarSheet = false
         }
     }
@@ -156,6 +200,7 @@ fun ProfileEditScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -629,7 +674,13 @@ fun AvatarDisplay(
                     val relative = imagePath.removePrefix("assets/")
                     context.assets.open(relative).use { BitmapFactory.decodeStream(it) }
                 }
-                imagePath.startsWith("content://") || imagePath.startsWith("file://") -> {
+                imagePath.startsWith("file://") -> {
+                    val filePath = Uri.parse(imagePath).path
+                    if (filePath != null) {
+                        BitmapFactory.decodeFile(filePath)
+                    } else null
+                }
+                imagePath.startsWith("content://") -> {
                     context.contentResolver.openInputStream(Uri.parse(imagePath)).use {
                         BitmapFactory.decodeStream(it)
                     }

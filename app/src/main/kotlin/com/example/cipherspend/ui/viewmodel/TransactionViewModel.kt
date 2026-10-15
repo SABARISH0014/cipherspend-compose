@@ -388,6 +388,14 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun restoreTransaction(transaction: TransactionEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            db.ignoredHashDao().removeIgnoredHash(transaction.hash)
+            db.transactionDao().insert(transaction)
+            refreshForecast()
+        }
+    }
+
     fun deleteNotification(notification: AppNotificationEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             db.appNotificationDao().deleteNotification(notification)

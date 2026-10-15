@@ -26,7 +26,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.cipherspend.service.SmsSyncManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.core.app.NotificationManagerCompat
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.LinearEasing
@@ -98,6 +101,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+fun isNotificationServiceEnabled(context: Context): Boolean {
+    return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName) ||
+            Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                ?.contains(context.packageName) == true
+}
+
 @Composable
 fun DashboardScreen(
     viewModel: TransactionViewModel,
@@ -119,6 +128,7 @@ fun DashboardScreen(
 
     val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
     val profileImage = prefs.getString("pref_profile_image", "assets/avatars/avatar1.png")
+    var bannerDismissedByUser by remember { mutableStateOf(prefs.getBoolean("notif_banner_dismissed", false)) }
 
     var hasSmsPermission by remember {
         mutableStateOf(
@@ -128,17 +138,13 @@ fun DashboardScreen(
     }
 
     var hasNotifListener by remember {
-        mutableStateOf(
-            Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-                ?.contains(context.packageName) == true
-        )
+        mutableStateOf(isNotificationServiceEnabled(context))
     }
 
     fun refreshPermissionsState() {
         val smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
-        val notifGranted = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-            ?.contains(context.packageName) == true
+        val notifGranted = isNotificationServiceEnabled(context)
 
         if (!hasSmsPermission && smsGranted) {
             viewModel.exitDemoMode()
@@ -148,13 +154,26 @@ fun DashboardScreen(
         }
         hasSmsPermission = smsGranted
         hasNotifListener = notifGranted
+        bannerDismissedByUser = prefs.getBoolean("notif_banner_dismissed", false)
+    }
+
+    fun refreshPermissionsWithRetry() {
+        refreshPermissionsState()
+        coroutineScope.launch {
+            delay(150)
+            refreshPermissionsState()
+            delay(250)
+            refreshPermissionsState()
+            delay(400)
+            refreshPermissionsState()
+        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                refreshPermissionsState()
+                refreshPermissionsWithRetry()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -166,7 +185,7 @@ fun DashboardScreen(
     val notifSettingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        refreshPermissionsState()
+        refreshPermissionsWithRetry()
     }
 
     var showPrivacyDisclosure by remember { mutableStateOf(false) }
@@ -190,7 +209,7 @@ fun DashboardScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        refreshPermissionsState()
+        refreshPermissionsWithRetry()
     }
 
     LazyColumn(
@@ -570,113 +589,133 @@ fun DashboardScreen(
         }
 
         // Contextual Permissions Banner (HCI Requirement)
-        item {
-            AnimatedVisibility(
-                visible = !hasSmsPermission || !hasNotifListener,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .glassEffect(
-                            shape = RoundedCornerShape(18.dp),
-                            backgroundColor = Color(0xFF0F1E33),
-                            borderColor = CyberCyan.copy(alpha = 0.35f)
-                        )
-                        .padding(18.dp)
+        val showPermissionsBanner = !hasSmsPermission || (!hasNotifListener && !bannerDismissedByUser)
+        if (showPermissionsBanner) {
+            item(key = "permissions_banner") {
+                AnimatedVisibility(
+                    visible = showPermissionsBanner,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(CyberCyan.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Sensors,
-                                    contentDescription = "Auto Tracking",
-                                    tint = CyberCyan,
-                                    modifier = Modifier.size(20.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .glassEffect(
+                                shape = RoundedCornerShape(18.dp),
+                                backgroundColor = Color(0xFF0F1E33),
+                                borderColor = CyberCyan.copy(alpha = 0.35f)
+                            )
+                            .padding(18.dp)
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(CyberCyan.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sensors,
+                                        contentDescription = "Auto Tracking",
+                                        tint = CyberCyan,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Enable Auto-Tracking",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 )
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             Text(
-                                text = "Enable Auto-Tracking",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    color = TextPrimary,
-                                    fontWeight = FontWeight.Bold
+                                text = "Zero-Knowledge Guarantee: SMS and UPI payment notifications are parsed 100% on-device by our native neural model. Data never leaves your hardware.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = TextSecondary,
+                                    lineHeight = 18.sp
                                 )
                             )
-                        }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
 
-                        Text(
-                            text = "Zero-Knowledge Guarantee: SMS and UPI payment notifications are parsed 100% on-device by our native neural model. Data never leaves your hardware.",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextSecondary,
-                                lineHeight = 18.sp
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Button(
-                            onClick = {
-                                if (!hasSmsPermission) {
-                                    pendingPermissionAction = "SMS"
-                                    showPrivacyDisclosure = true
-                                } else if (!hasNotifListener) {
-                                    pendingPermissionAction = "NOTIF"
-                                    showPrivacyDisclosure = true
-                                } else {
-                                    coroutineScope.launch {
-                                        SmsSyncManager.syncInbox(context, fullRescan = true)
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
-                        ) {
-                            Text(
-                                text = when {
-                                    !hasSmsPermission -> "Enable Auto-Tracking (SMS)"
-                                    !hasNotifListener -> "Grant Notification Listener"
-                                    syncProgress.isSyncing -> "Scanning Messages..."
-                                    else -> "Sync SMS Inbox Now"
-                                },
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                            )
-                        }
-
-                        if (!isDemoMode && !hasSmsPermission) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            OutlinedButton(
+                            Button(
                                 onClick = {
-                                    viewModel.loadDemoTransactions()
-                                    CipherSnackbarManager.showMessage("Demo transactions loaded!")
+                                    if (!hasSmsPermission) {
+                                        pendingPermissionAction = "SMS"
+                                        showPrivacyDisclosure = true
+                                    } else if (!hasNotifListener) {
+                                        pendingPermissionAction = "NOTIF"
+                                        showPrivacyDisclosure = true
+                                    } else {
+                                        coroutineScope.launch {
+                                            SmsSyncManager.syncInbox(context, fullRescan = true)
+                                        }
+                                    }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(44.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.6f)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = CyberCyan)
+                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                             ) {
                                 Text(
-                                    text = "Try Demo Mode (No SMS Needed)",
+                                    text = when {
+                                        !hasSmsPermission -> "Enable Auto-Tracking (SMS)"
+                                        !hasNotifListener -> "Grant Notification Listener"
+                                        syncProgress.isSyncing -> "Scanning Messages..."
+                                        else -> "Sync SMS Inbox Now"
+                                    },
                                     style = MaterialTheme.typography.titleMedium.copy(
-                                        color = CyberCyan,
-                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
                                     )
                                 )
+                            }
+
+                            if (hasSmsPermission && !hasNotifListener) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                TextButton(
+                                    onClick = {
+                                        prefs.edit().putBoolean("notif_banner_dismissed", true).apply()
+                                        bannerDismissedByUser = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "Skip for Now",
+                                        color = TextMuted,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+
+                            if (!isDemoMode && !hasSmsPermission) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.loadDemoTransactions()
+                                        CipherSnackbarManager.showMessage("Demo transactions loaded!")
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.6f)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CyberCyan)
+                                ) {
+                                    Text(
+                                        text = "Try Demo Mode (No SMS Needed)",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            color = CyberCyan,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -792,11 +831,17 @@ fun DashboardScreen(
         } else {
             items(transactions, key = { it.id }) { tx ->
                 val dismissState = rememberSwipeToDismissBoxState(
+                    positionalThreshold = { totalDistance -> totalDistance * 0.45f },
                     confirmValueChange = { value ->
                         if (value == SwipeToDismissBoxValue.EndToStart) {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             viewModel.deleteTransaction(tx)
-                            CipherSnackbarManager.showMessage("Transaction deleted")
+                            CipherSnackbarManager.showMessage(
+                                message = "Deleted ${tx.merchant}",
+                                durationMillis = 4000L,
+                                actionLabel = "UNDO",
+                                onAction = { viewModel.restoreTransaction(tx) }
+                            )
                             true
                         } else false
                     }

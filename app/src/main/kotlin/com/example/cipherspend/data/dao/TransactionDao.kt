@@ -78,7 +78,7 @@ interface TransactionDao {
     suspend fun hasMerchantAmountMatch(amount: Double, merchant: String, timestamp: Long, windowMs: Long = 259_200_000L): Boolean
 
     @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE amount = :amount AND abs(timestamp - :timestamp) <= :windowMs)")
-    suspend fun hasFuzzyAmountMatch(amount: Double, timestamp: Long, windowMs: Long = 3_600_000L): Boolean
+    suspend fun hasFuzzyAmountMatch(amount: Double, timestamp: Long, windowMs: Long = 180_000L): Boolean
 
     @Query("SELECT * FROM transactions WHERE category = :category")
     suspend fun getTransactionsByCategory(category: String): List<TransactionEntity>

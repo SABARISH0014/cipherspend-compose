@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -58,6 +59,8 @@ data class CipherSnackbarData(
     val message: String,
     val type: SnackbarType = SnackbarType.SUCCESS,
     val durationMillis: Long = 2500L,
+    val actionLabel: String? = null,
+    val onAction: (() -> Unit)? = null,
     val id: Long = System.currentTimeMillis()
 )
 
@@ -75,7 +78,9 @@ object CipherSnackbarManager {
     fun showMessage(
         message: String,
         isError: Boolean = false,
-        durationMillis: Long = 2500L
+        durationMillis: Long = 2500L,
+        actionLabel: String? = null,
+        onAction: (() -> Unit)? = null
     ) {
         val type = if (isError) SnackbarType.ERROR else SnackbarType.SUCCESS
         show(
@@ -83,6 +88,8 @@ object CipherSnackbarManager {
                 message = message,
                 type = type,
                 durationMillis = durationMillis,
+                actionLabel = actionLabel,
+                onAction = onAction,
                 id = System.currentTimeMillis()
             )
         )
@@ -177,6 +184,24 @@ fun CipherSnackbarHost(
                                 fontSize = 13.5.sp
                             )
                         )
+                        if (!current.actionLabel.isNullOrBlank() && current.onAction != null) {
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Text(
+                                text = current.actionLabel,
+                                modifier = Modifier
+                                    .clickable {
+                                        val action = current.onAction
+                                        CipherSnackbarManager.dismiss()
+                                        action()
+                                    }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = CyberCyan,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                            )
+                        }
                     }
                 }
             }

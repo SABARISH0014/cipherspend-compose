@@ -16,4 +16,7 @@ interface IgnoredHashDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnoredHash(entity: IgnoredHashEntity)
+
+    @Query("DELETE FROM ignored_hashes WHERE hash = :hash")
+    suspend fun removeIgnoredHash(hash: String)
 }
