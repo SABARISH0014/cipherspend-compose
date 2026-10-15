@@ -1,10 +1,14 @@
 package com.example.cipherspend.ui.screens
 
+import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import com.example.cipherspend.NotificationService
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -59,7 +63,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -118,9 +125,28 @@ fun SettingsScreen(
     }
 
     fun checkNotifListener(): Boolean {
-        return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName) ||
-                Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-                    ?.contains(context.packageName) == true
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val cn = ComponentName(context, NotificationService::class.java)
+            if (nm != null && nm.isNotificationListenerAccessGranted(cn)) {
+                return true
+            }
+        } catch (_: Exception) {}
+
+        try {
+            if (NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)) {
+                return true
+            }
+        } catch (_: Exception) {}
+
+        try {
+            val enabled = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners") ?: ""
+            if (enabled.contains(context.packageName) || enabled.contains("com.example.cipherspend") || enabled.contains("NotificationService")) {
+                return true
+            }
+        } catch (_: Exception) {}
+
+        return false
     }
 
     var isNotifListenerActive by remember {
@@ -129,17 +155,35 @@ fun SettingsScreen(
 
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
 
+    val coroutineScope = rememberCoroutineScope()
+
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
                 isNotifListenerActive = checkNotifListener()
+                coroutineScope.launch {
+                    delay(200)
+                    isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+                    isNotifListenerActive = checkNotifListener()
+                    delay(400)
+                    isNotifListenerActive = checkNotifListener()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(isNotifListenerActive) {
+        if (!isNotifListenerActive) {
+            while (!isNotifListenerActive) {
+                delay(600)
+                isNotifListenerActive = checkNotifListener()
+            }
         }
     }
 
@@ -341,12 +385,10 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                if (!isNotifListenerActive) {
-                                    try {
-                                        context.startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
-                                    } catch (_: Exception) {
-                                        CipherSnackbarManager.showMessage("Could not open Notification Listener settings", isError = true)
-                                    }
+                                try {
+                                    context.startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+                                } catch (_: Exception) {
+                                    CipherSnackbarManager.showMessage("Could not open Notification Listener settings", isError = true)
                                 }
                             },
                         horizontalArrangement = Arrangement.SpaceBetween,

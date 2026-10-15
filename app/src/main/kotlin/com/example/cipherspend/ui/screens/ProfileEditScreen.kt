@@ -59,7 +59,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -113,50 +117,58 @@ fun ProfileEditScreen(
     var mpinError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
 
+    val coroutineScope = rememberCoroutineScope()
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { selectedUri ->
-            try {
-                val inputStream = context.contentResolver.openInputStream(selectedUri)
-                val originalBitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(selectedUri)
+                    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
 
-                if (originalBitmap != null) {
-                    val maxDim = 512
-                    val width = originalBitmap.width
-                    val height = originalBitmap.height
-                    val (newWidth, newHeight) = if (width > maxDim || height > maxDim) {
-                        if (width > height) {
-                            maxDim to ((height.toFloat() / width) * maxDim).toInt()
+                    if (originalBitmap != null) {
+                        val maxDim = 512
+                        val width = originalBitmap.width
+                        val height = originalBitmap.height
+                        val (newWidth, newHeight) = if (width > maxDim || height > maxDim) {
+                            if (width > height) {
+                                maxDim to ((height.toFloat() / width) * maxDim).toInt()
+                            } else {
+                                (((width.toFloat() / height) * maxDim).toInt()) to maxDim
+                            }
                         } else {
-                            (((width.toFloat() / height) * maxDim).toInt()) to maxDim
+                            width to height
                         }
-                    } else {
-                        width to height
+
+                        val scaledBitmap = if (newWidth != width || newHeight != height) {
+                            Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+                        } else {
+                            originalBitmap
+                        }
+
+                        // Delete previous user_avatar_*.png files in filesDir
+                        context.filesDir.listFiles { file ->
+                            file.name.startsWith("user_avatar_") && file.name.endsWith(".png")
+                        }?.forEach { it.delete() }
+
+                        // Save as new PNG to persist across app restarts
+                        val savedFile = File(context.filesDir, "user_avatar_${System.currentTimeMillis()}.png")
+                        FileOutputStream(savedFile).use { out ->
+                            scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            profileImage = "file://${savedFile.absolutePath}"
+                        }
                     }
-
-                    val scaledBitmap = if (newWidth != width || newHeight != height) {
-                        Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
-                    } else {
-                        originalBitmap
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        CipherSnackbarManager.showMessage("Failed to load avatar", isError = true)
                     }
-
-                    // Delete previous user_avatar_*.png files in filesDir
-                    context.filesDir.listFiles { file ->
-                        file.name.startsWith("user_avatar_") && file.name.endsWith(".png")
-                    }?.forEach { it.delete() }
-
-                    // Save as new PNG to persist across app restarts
-                    val savedFile = File(context.filesDir, "user_avatar_${System.currentTimeMillis()}.png")
-                    FileOutputStream(savedFile).use { out ->
-                        scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                    }
-
-                    profileImage = "file://${savedFile.absolutePath}"
                 }
-            } catch (e: Exception) {
-                CipherSnackbarManager.showMessage("Failed to load avatar", isError = true)
             }
             showAvatarSheet = false
         }
