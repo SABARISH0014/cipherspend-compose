@@ -100,6 +100,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.YearMonth
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -149,7 +150,7 @@ fun DashboardScreen(
     val syncProgress by SmsSyncManager.syncState
 
     val prefs = remember { context.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE) }
-    val profileImage = prefs.getString("pref_profile_image", "assets/avatars/avatar1.png")
+    var profileImage by remember { mutableStateOf(prefs.getString("pref_profile_image", "assets/avatars/avatar1.png")) }
 
     var hasSmsPermission by remember {
         mutableStateOf(
@@ -186,13 +187,9 @@ fun DashboardScreen(
         coroutineScope.launch {
             delay(150)
             refreshPermissionsState()
-            delay(250)
-            refreshPermissionsState()
-            delay(400)
+            delay(300)
             refreshPermissionsState()
             delay(600)
-            refreshPermissionsState()
-            delay(1000)
             refreshPermissionsState()
         }
     }
@@ -201,6 +198,7 @@ fun DashboardScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                profileImage = prefs.getString("pref_profile_image", "assets/avatars/avatar1.png")
                 refreshPermissionsWithRetry()
             }
         }
@@ -231,14 +229,7 @@ fun DashboardScreen(
         }
     }
 
-    LaunchedEffect(hasNotifListener) {
-        if (!hasNotifListener) {
-            while (!hasNotifListener) {
-                delay(600)
-                refreshPermissionsState()
-            }
-        }
-    }
+
 
     LaunchedEffect(syncProgress.isSyncing) {
         if (!syncProgress.isSyncing) {
@@ -536,21 +527,61 @@ fun DashboardScreen(
                     }
                     val safePerDay = (budget - totalSpent).coerceAtLeast(0.0) / daysLeftInMonth.coerceAtLeast(1)
 
+                    val todayCalendar = remember {
+                        Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                    }
+                    val todayStart = todayCalendar.timeInMillis
+                    val todaySpend = remember(transactions) {
+                        transactions.filter { it.timestamp >= todayStart && it.category != "Refund" }.sumOf { it.amount }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Today's Spend",
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "₹${"%,.0f".format(todaySpend)}",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        color = AmberGlow,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Safe/Day",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp)
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    maxLines = 1
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
@@ -558,8 +589,9 @@ fun DashboardScreen(
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         color = CyberCyan,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
+                                        fontSize = 12.sp
+                                    ),
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -568,13 +600,14 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Avg Burn",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp)
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    maxLines = 1
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
@@ -582,8 +615,9 @@ fun DashboardScreen(
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         color = NeonEmerald,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
+                                        fontSize = 12.sp
+                                    ),
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -592,13 +626,14 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Top Spend",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp)
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    maxLines = 1
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
@@ -606,7 +641,7 @@ fun DashboardScreen(
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         color = TextPrimary,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        fontSize = 12.sp
                                     ),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis

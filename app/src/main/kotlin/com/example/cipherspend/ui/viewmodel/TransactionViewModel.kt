@@ -25,6 +25,9 @@ import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Calendar
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.withContext
 
 class TransactionViewModel(application: Application) : AndroidViewModel(application) {
     private val db get() = DatabaseProvider.getDatabase(getApplication())
@@ -424,5 +427,25 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
 
     suspend fun getTransactionById(id: Long): TransactionEntity? {
         return db.transactionDao().getTransactionById(id)
+    }
+
+    suspend fun exportVaultJson(): String = withContext(Dispatchers.IO) {
+        val records = db.transactionDao().getAllTransactions()
+        Gson().toJson(records)
+    }
+
+    suspend fun importVaultJson(json: String): Int = withContext(Dispatchers.IO) {
+        try {
+            val listType = object : TypeToken<List<TransactionEntity>>() {}.type
+            val records: List<TransactionEntity> = Gson().fromJson(json, listType) ?: emptyList()
+            val sanitized = records.map { it.copy(id = 0) }
+            val insertResults = db.transactionDao().insertAll(sanitized)
+            val importedCount = insertResults.count { it != -1L }
+            _dbEpoch.value++
+            refreshForecast()
+            importedCount
+        } catch (e: Exception) {
+            0
+        }
     }
 }

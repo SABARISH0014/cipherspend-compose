@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy & Data Safety Disclosure | CipherSpend</title>
+    <meta name="description" content="Official Privacy Policy and Sensitive Data Safety Disclosure for CipherSpend, the 100% offline, zero-knowledge personal expense manager.">
+    <meta name="author" content="Sabarish P. (Cipher Labs)">
+    <meta name="theme-color" content="#0A0F1A">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0A0F1A;
+            --bg-secondary: #0F172A;
+            --bg-card: rgba(15, 23, 42, 0.72);
+            --bg-card-hover: rgba(24, 35, 62, 0.85);
+            --border-glow: rgba(0, 240, 255, 0.22);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --cyber-cyan: #00F0FF;
+            --cyan-glow: rgba(0, 240, 255, 0.35);
+            --neon-emerald: #10B981;
+            --emerald-glow: rgba(16, 185, 129, 0.35);
+            --danger-red: #EF4444;
+            --amber-glow: #F59E0B;
+            --purple-glow: #8B5CF6;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient glowing background backdrop */
+        .ambient-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .glow-circle-1 {
+            position: absolute;
+            top: -150px;
+            left: -150px;
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.12) 0%, rgba(0, 240, 255, 0) 70%);
+            filter: blur(80px);
+        }
+
+        .glow-circle-2 {
+            position: absolute;
+            top: 40%;
+            right: -200px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.10) 0%, rgba(16, 185, 129, 0) 70%);
+            filter: blur(90px);
+        }
+
+        .glow-circle-3 {
+            position: absolute;
+            bottom: -150px;
+            left: 20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0) 70%);
+            filter: blur(80px);
+        }
+
+        .container {
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 48px 24px 80px;
+        }
+
+        /* Header Card */
+        header {
+            margin-bottom: 40px;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(10, 15, 26, 0.95) 100%);
+            border: 1px solid var(--border-glow);
+            border-radius: 24px;
+            padding: 40px 36px;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 25px -5px var(--cyan-glow);
+            backdrop-filter: blur(16px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--cyber-cyan), var(--neon-emerald), var(--purple-glow));
+        }
+
+        .badges-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .badge-cyan {
+            background: rgba(0, 240, 255, 0.12);
+            color: var(--cyber-cyan);
+            border: 1px solid rgba(0, 240, 255, 0.35);
+        }
+
+        .badge-emerald {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--neon-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--danger-red);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+
+        h1 {
+            font-size: 2.35rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #FFFFFF 30%, var(--cyber-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meta-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .meta-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        /* Sections & Cards */
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 28px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.25s ease, transform 0.25s ease;
+        }
+
+        .section-card:hover {
+            border-color: rgba(0, 240, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .section-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .icon-cyan {
+            background: rgba(0, 240, 255, 0.12);
+            color: var(--cyber-cyan);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+
+        .icon-emerald {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--neon-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .icon-purple {
+            background: rgba(139, 92, 246, 0.12);
+            color: var(--purple-glow);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .icon-amber {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--amber-glow);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        h2 {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Callout boxes */
+        .callout {
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin: 18px 0;
+            font-size: 0.95rem;
+        }
+
+        .callout-cyan {
+            background: rgba(0, 240, 255, 0.06);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-left: 4px solid var(--cyber-cyan);
+        }
+
+        .callout-emerald {
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-left: 4px solid var(--neon-emerald);
+        }
+
+        .callout-danger {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-left: 4px solid var(--danger-red);
+        }
+
+        /* Grid for details */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .card-inner {
+            background: rgba(10, 15, 26, 0.6);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .card-inner h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-size: 0.94rem;
+        }
+
+        li:last-child {
+            margin-bottom: 0;
+        }
+
+        li::before {
+            content: "▹";
+            position: absolute;
+            left: 4px;
+            color: var(--cyber-cyan);
+            font-weight: bold;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.88rem;
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--cyber-cyan);
+            padding: 2px 7px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        code.strike {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-red);
+            border-color: rgba(239, 68, 68, 0.25);
+            text-decoration: line-through;
+        }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin: 20px 0;
+            border-radius: 14px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.92rem;
+            background: rgba(10, 15, 26, 0.4);
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-primary);
+            font-weight: 600;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-subtle);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 48px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--cyber-cyan);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        footer a:hover {
+            color: #FFFFFF;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px 16px 60px;
+            }
+
+            .hero-card {
+                padding: 28px 20px;
+            }
+
+            h1 {
+                font-size: 1.85rem;
+            }
+
+            .section-card {
+                padding: 24px 18px;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow">
+        <div class="glow-circle-1"></div>
+        <div class="glow-circle-2"></div>
+        <div class="glow-circle-3"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header Hero -->
+        <header>
+            <div class="hero-card">
+                <div class="badges-row">
+                    <span class="badge badge-cyan">🔒 100% Offline Vault</span>
+                    <span class="badge badge-emerald">✓ Zero-Knowledge Architecture</span>
+                    <span class="badge badge-danger">🚫 Zero Network Transmission</span>
+                </div>
+                <h1>CipherSpend — Privacy Policy & Data Safety Disclosure</h1>
+                <p>Official Google Play Store Sensitive Permissions and Data Safety Transparency Document</p>
+
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Developer</span>
+                        <span class="meta-value">Sabarish P. (Cipher Labs)</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Package Name / App ID</span>
+                        <span class="meta-value">com.sabarish.cipherspend</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Effective Date</span>
+                        <span class="meta-value">October 16, 2026</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">App Category</span>
+                        <span class="meta-value">Personal Finance & Budgeting</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Section 1: Introduction & Core Commitment -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-cyan">🛡️</div>
+                <h2>1. Core Privacy Philosophy & Commitment</h2>
+            </div>
+            <p>
+                At <strong>CipherSpend</strong>, we believe that your personal financial records are sacred, sensitive, and private. Unlike traditional expense management services that upload your banking history to remote servers or monetize your data through ad networks, CipherSpend was engineered from day one on a foundation of <strong>strict Zero-Knowledge, 100% Offline execution</strong>.
+            </p>
+            <p>
+                This Privacy Policy and Prominent Disclosure describes in clear, transparent language how CipherSpend handles data, why sensitive Android permissions are requested, how your data is cryptographically safeguarded on your hardware, and how you retain total sovereignty and control over your financial records.
+            </p>
+        </section>
+
+        <!-- Section 2: Zero-Knowledge & No INTERNET Permission -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-emerald">⚡</div>
+                <h2>2. 100% Offline Architecture & Absence of Internet Access</h2>
+            </div>
+            <p>
+                The cornerstone of CipherSpend’s security guarantee is architectural, not merely contractual:
+            </p>
+
+            <div class="callout callout-emerald">
+                <strong>Absolute Technical Guarantee:</strong> CipherSpend does <strong>NOT</strong> declare or request the <code class="strike">android.permission.INTERNET</code> permission in its Android Manifest (<code>AndroidManifest.xml</code>). The operating system itself physically prohibits CipherSpend from establishing any network sockets, HTTP/HTTPS connections, or remote communications.
+            </div>
+
+            <div class="grid-2">
+                <div class="card-inner">
+                    <h3 style="color: var(--neon-emerald);">🚫 Zero Remote Infrastructure</h3>
+                    <ul>
+                        <li>No cloud servers, sync relays, or databases</li>
+                        <li>No remote APIs, telemetry, or diagnostic beacons</li>
+                        <li>No user accounts, email logins, or tracking IDs</li>
+                    </ul>
+                </div>
+                <div class="card-inner">
+                    <h3 style="color: var(--cyber-cyan);">🚫 Zero Third-Party SDKs</h3>
+                    <ul>
+                        <li>Zero advertising SDKs or programmatic ad networks</li>
+                        <li>Zero analytics frameworks (No Firebase, No Mixpanel)</li>
+                        <li>Zero crash-reporting SDKs that upload logs</li>
+                    </ul>
+                </div>
+            </div>
+            <p style="margin-top: 18px;">
+                Because there is literally no network interface in the application bundle, it is mathematically and physically impossible for your financial records, bank messages, or identity to be exfiltrated or transmitted to anyone—including the developer.
+            </p>
+        </section>
+
+        <!-- Section 3: Sensitive Permissions & Prominent Disclosures -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-cyan">📲</div>
+                <h2>3. Sensitive Permissions & Prominent Disclosures</h2>
+            </div>
+            <p>
+                In compliance with the <strong>Google Play Developer Policy on Permissions and Sensitive APIs</strong>, this section provides an unambiguous, prominent disclosure regarding the sensitive permissions CipherSpend requires to deliver its automated expense tracking functionality:
+            </p>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Permission</th>
+                            <th>Data Accessed</th>
+                            <th>Sole Purpose & Execution Scope</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>android.permission.READ_SMS</code><br><code>android.permission.RECEIVE_SMS</code></td>
+                            <td>Incoming and historical financial debit/credit SMS messages from banking senders.</td>
+                            <td>
+                                <strong>On-Device Transaction Parsing:</strong> Automatically extracts transaction amounts, merchant/payee names, payment channels (UPI/Card/NEFT), and masked account numbers (e.g. <code>••1234</code>). All NLP extraction and tokenization occur 100% locally on your device hardware.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>android.permission.BIND_NOTIFICATION_LISTENER_SERVICE</code></td>
+                            <td>Status bar payment notifications posted by approved UPI and banking apps (Google Pay, PhonePe, Paytm, BHIM, CRED, iMobile, YONO, HDFC, etc.).</td>
+                            <td>
+                                <strong>Real-Time Instant Tracking:</strong> Captures instant push notifications when a UPI transaction is executed, allowing instant offline ledger updates without requiring an SMS delay. Notifications from non-financial apps are immediately ignored and discarded.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>android.permission.USE_BIOMETRIC</code></td>
+                            <td>Hardware biometric authentication prompt status (Pass / Fail / Cancelled).</td>
+                            <td>
+                                <strong>Master Vault Authentication:</strong> Unlocks your encrypted vault using your fingerprint or face via the Android BiometricPrompt API. Biometric template data stays encrypted inside the Android Secure Element and is never accessible to CipherSpend.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>android.permission.POST_NOTIFICATIONS</code></td>
+                            <td>Local system notifications.</td>
+                            <td>
+                                <strong>Proactive Spending Limit Alerts:</strong> Generates native on-device warning alerts when your monthly spending reaches 80% or 100% of your configured salary cycle budget.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="callout callout-cyan">
+                <strong>On-Device Machine Learning Inference:</strong> CipherSpend embeds an offline TensorFlow Lite neural classification model (<code>sms_model.tflite</code>) and static vocabulary (<code>vocab.json</code>) directly in the application assets. All expense categorization (e.g. Food & Dining, Bills & Utilities, Shopping, Travel) executes entirely in-memory on your CPU without any remote AI cloud services.
+            </div>
+
+            <div class="callout callout-danger">
+                <strong>No Data Sharing, Renting, or Selling:</strong> Neither raw SMS bodies, notifications, nor extracted financial transaction details are ever shared with, sold to, or accessible by any third parties, advertisers, data brokers, or credit bureaus.
+            </div>
+        </section>
+
+        <!-- Section 4: Local Cryptographic Storage -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-purple">🔐</div>
+                <h2>4. Military-Grade Local Cryptography (SQLCipher AES-256)</h2>
+            </div>
+            <p>
+                When transaction data is parsed, it is immediately protected by multiple layers of hardware-backed encryption:
+            </p>
+            <ul>
+                <li>
+                    <strong>SQLCipher AES-256 Encryption:</strong> All transactions, budget limits, notifications, and metadata are written into an encrypted SQLite database (<code>cipherspend_encrypted.db</code>) using 256-bit AES encryption with HMAC-SHA256 page authentication and 256,000 PBKDF2 key derivation iterations.
+                </li>
+                <li>
+                    <strong>Hardware-Backed Android Keystore:</strong> Master cryptographic encryption keys and user preferences are secured via Android Keystore system with <code>EncryptedSharedPreferences</code> using the <code>AES256_GCM</code> master key scheme, ensuring hardware-isolated protection against root compromise or external extraction.
+                </li>
+                <li>
+                    <strong>Zero-Knowledge Master MPIN:</strong> The user’s 4-digit Master MPIN is salted and hashed using PBKDF2. The application never stores your plaintext MPIN.
+                </li>
+                <li>
+                    <strong>Memory Protection:</strong> Direct in-memory <code>ByteBuffer</code> buffers are cleared and recycled to prevent memory dumps or cold-boot exposure.
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 5: User Control & Complete Data Deletion -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-amber">🗑️</div>
+                <h2>5. User Control, Offline Backup & Right to Erasure (GDPR / CCPA)</h2>
+            </div>
+            <p>
+                CipherSpend guarantees complete, unfettered user sovereignty over financial data in accordance with global data protection standards (including GDPR and CCPA principles):
+            </p>
+
+            <div class="grid-2">
+                <div class="card-inner">
+                    <h3 style="color: var(--cyber-cyan);">💾 Local Vault Backup & Restore</h3>
+                    <p style="font-size: 0.9rem;">
+                        Users can export their complete encrypted ledger to a local JSON file at any time via the Android Storage Access Framework (SAF). Backups can be restored across devices completely offline without internet or cloud accounts.
+                    </p>
+                </div>
+                <div class="card-inner">
+                    <h3 style="color: var(--danger-red);">💥 Complete Nuclear Wipe (Data Erasure)</h3>
+                    <p style="font-size: 0.9rem;">
+                        Tapping <strong>"Delete Account & Data"</strong> in Settings immediately wipes the SQLCipher database file (<code>cipherspend_encrypted.db</code>), purges all cryptographic keys from the Android Keystore, erases preferences, and resets the application to a clean state.
+                    </p>
+                </div>
+            </div>
+
+            <ul style="margin-top: 18px;">
+                <li>
+                    <strong>Revoking Permissions:</strong> You can revoke SMS or Notification Listener permissions at any time via <code>Settings &gt; Apps &gt; CipherSpend &gt; Permissions</code> without bricking manual ledger features.
+                </li>
+                <li>
+                    <strong>Individual Transaction Deletion:</strong> Swipe left on any transaction row in the dashboard to delete it immediately, with instant one-tap undo capability.
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 6: Children's Privacy -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-cyan">👶</div>
+                <h2>6. Children’s Privacy (COPPA Compliance)</h2>
+            </div>
+            <p>
+                CipherSpend is a personal finance tool directed to individuals who possess bank accounts and credit cards, and is not directed to children under the age of 13 (or under 16 in the European Union). We do not knowingly solicit or collect data from children. Furthermore, because CipherSpend operates 100% offline with zero network connectivity, no personal data from any user is ever collected or received by the developer.
+            </p>
+        </section>
+
+        <!-- Section 7: Changes to this Policy -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-emerald">📝</div>
+                <h2>7. Changes to this Privacy Policy</h2>
+            </div>
+            <p>
+                We may periodically update this policy to reflect application enhancements or revisions to Google Play Store requirements. Any modifications will be posted directly to this public URL with an updated effective date. We encourage users to review this page periodically. Continued use of CipherSpend constitutes acceptance of the effective policy.
+            </p>
+        </section>
+
+        <!-- Section 8: Developer Contact Information -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-icon icon-purple">📬</div>
+                <h2>8. Developer Contact & Inquiries</h2>
+            </div>
+            <p>
+                If you have questions, feedback, or verification inquiries regarding this Privacy Policy or CipherSpend's cryptographic offline architecture, please reach out directly:
+            </p>
+            <div class="card-inner" style="margin-top: 14px;">
+                <p><strong>Developer:</strong> Sabarish P. (Cipher Labs)</p>
+                <p><strong>Application:</strong> CipherSpend (<code>com.sabarish.cipherspend</code>)</p>
+                <p><strong>Privacy Inquiries & Support:</strong> <a href="mailto:support.cipherspend@gmail.com" style="color: var(--cyber-cyan); text-decoration: none; font-weight: 600;">support.cipherspend@gmail.com</a></p>
+                <p><strong>Repository & Web Documentation:</strong> <a href="https://github.com/SABARISH0014/cipherspend-compose" target="_blank" rel="noopener noreferrer" style="color: var(--cyber-cyan); text-decoration: none;">github.com/SABARISH0014/cipherspend-compose</a></p>
+            </div>
+        </section>
+
+        <footer>
+            <p>© 2026 CipherSpend • Cipher Labs. All rights reserved.</p>
+            <p style="margin-top: 6px;">Engineered with Zero-Knowledge Local Cryptography • 100% Offline Personal Expense Intelligence</p>
+        </footer>
+    </div>
+
+</body>
+</html>

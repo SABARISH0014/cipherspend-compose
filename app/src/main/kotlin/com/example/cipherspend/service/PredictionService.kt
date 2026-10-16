@@ -368,18 +368,16 @@ class PredictionService private constructor(private val context: Context) {
         val topCategory = catSpends.firstOrNull()?.category ?: "None"
         val topAmount = catSpends.firstOrNull()?.total ?: 0.0
 
-        val maxDays = ym.lengthOfMonth()
-        val nowDay = if (ym == currentYm) {
-            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-        } else if (ym.isBefore(currentYm)) {
-            maxDays
-        } else {
-            0
+        val nowMillis = System.currentTimeMillis()
+        val totalCycleDays = ((end - start) / 86_400_000L).toInt().coerceAtLeast(1)
+        val elapsedDays = when {
+            nowMillis <= start -> 0
+            nowMillis >= end -> totalCycleDays
+            else -> (((nowMillis - start) / 86_400_000L).toInt() + 1).coerceIn(1, totalCycleDays)
         }
-
-        val daysRemaining = (maxDays - nowDay).coerceAtLeast(0)
-        val dailyAverage = if (nowDay > 0) spent / nowDay else 0.0
-        val projected = if (ym.isBefore(currentYm)) spent else spent + (dailyAverage * daysRemaining)
+        val daysRemaining = (totalCycleDays - elapsedDays).coerceAtLeast(0)
+        val dailyAverage = if (elapsedDays > 0) spent / elapsedDays else 0.0
+        val projected = if (nowMillis >= end) spent else spent + (dailyAverage * daysRemaining)
         val progress = (spent / (if (budget > 0) budget else 1.0)).coerceIn(0.0, 1.0).toFloat()
 
         return SpendingForecast(

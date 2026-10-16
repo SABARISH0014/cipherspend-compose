@@ -324,6 +324,17 @@ fun AnalyticsScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { (percent / 100f).coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = catColor,
+                            trackColor = Color.White.copy(alpha = 0.08f)
+                        )
+
                         AnimatedVisibility(
                             visible = isSelected,
                             enter = expandVertically() + fadeIn(),

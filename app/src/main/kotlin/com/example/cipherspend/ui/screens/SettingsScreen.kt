@@ -8,12 +8,21 @@ import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
 import com.example.cipherspend.NotificationService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.cipherspend.ui.components.CipherSnackbarManager
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -90,6 +99,8 @@ import com.example.cipherspend.ui.theme.TextSecondary
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
+
+private const val PRIVACY_POLICY_URL = "https://sabarish0014.github.io/cipherspend-compose/"
 
 @Composable
 fun SettingsScreen(
@@ -178,10 +189,54 @@ fun SettingsScreen(
         }
     }
 
+    val backupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val json = transactionViewModel.exportVaultJson()
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.bufferedWriter().use { writer ->
+                        writer.write(json)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    CipherSnackbarManager.showMessage("Vault backup saved")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    CipherSnackbarManager.showMessage("Backup failed: ${e.message}", isError = true)
+                }
+            }
+        }
+    }
+
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val json = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    inputStream.bufferedReader().use { it.readText() }
+                } ?: ""
+                val count = transactionViewModel.importVaultJson(json)
+                withContext(Dispatchers.Main) {
+                    CipherSnackbarManager.showMessage("Restored $count transactions")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    CipherSnackbarManager.showMessage("Restore failed: ${e.message}", isError = true)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(isNotifListenerActive) {
         if (!isNotifListenerActive) {
-            while (!isNotifListenerActive) {
-                delay(600)
+            repeat(4) {
+                delay(400)
                 isNotifListenerActive = checkNotifListener()
             }
         }
@@ -443,8 +498,8 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .clickable {
                                 try {
-                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                        data = Uri.parse("package:${context.packageName}")
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
                                     }
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
@@ -598,6 +653,68 @@ fun SettingsScreen(
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                                backupLauncher.launch("CipherSpend_Vault_$timestamp.json")
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CyberCyan.copy(alpha = 0.2f),
+                                contentColor = CyberCyan
+                            ),
+                            border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.5f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FileDownload,
+                                contentDescription = "Backup",
+                                tint = CyberCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Backup Vault",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                restoreLauncher.launch(arrayOf("application/json"))
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PurpleGlow.copy(alpha = 0.2f),
+                                contentColor = PurpleGlow
+                            ),
+                            border = BorderStroke(1.dp, PurpleGlow.copy(alpha = 0.5f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FileUpload,
+                                contentDescription = "Restore",
+                                tint = PurpleGlow,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Restore Backup",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
 
                     OutlinedButton(
                         onClick = { showPrivacyPolicyDialog = true },
@@ -839,6 +956,24 @@ fun SettingsScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                 ) {
                     Text("Close", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            CipherSnackbarManager.showMessage("Could not open browser: ${e.message}", isError = true)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Open Web Policy (HTTPS)",
+                        color = CyberCyan,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             },
             containerColor = Color(0xFF131B2A),

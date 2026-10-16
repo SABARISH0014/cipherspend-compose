@@ -161,7 +161,9 @@ fun ProfileEditScreen(
                         }
 
                         withContext(Dispatchers.Main) {
-                            profileImage = "file://${savedFile.absolutePath}"
+                            val newPath = "file://${savedFile.absolutePath}"
+                            profileImage = newPath
+                            prefs.edit().putString("pref_profile_image", newPath).apply()
                         }
                     }
                 } catch (e: Exception) {
@@ -441,7 +443,7 @@ fun ProfileEditScreen(
                                         )
                                     )
                                     Text(
-                                        text = "Re-keys SQLCipher encrypted database",
+                                        text = "Update your 4-digit Master Vault PIN",
                                         style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                                     )
                                 }
@@ -523,6 +525,7 @@ fun ProfileEditScreen(
                                 )
                                 .clickable {
                                     profileImage = assetPath
+                                    prefs.edit().putString("pref_profile_image", assetPath).apply()
                                     showAvatarSheet = false
                                 },
                             contentAlignment = Alignment.Center
