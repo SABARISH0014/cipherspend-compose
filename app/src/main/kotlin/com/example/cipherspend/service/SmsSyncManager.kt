@@ -176,6 +176,8 @@ object SmsSyncManager {
 
             Log.d(TAG, "Inbox sync finished: Scanned $scanned SMS, found $totalFound transactions, inserted $insertedCount new rows.")
 
+            prefs.edit().putBoolean("initial_sms_sync_done", true).apply()
+
             if (latestTimestamp > 0) {
                 prefs.edit().putLong("last_sms_sync_timestamp", latestTimestamp).apply()
             }

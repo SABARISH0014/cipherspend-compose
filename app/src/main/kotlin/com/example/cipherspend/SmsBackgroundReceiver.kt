@@ -3,7 +3,7 @@ package com.example.cipherspend
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.telephony.SmsMessage
+import android.provider.Telephony
 import android.util.Log
 import com.example.cipherspend.data.db.DatabaseProvider
 import com.example.cipherspend.service.PredictionService
@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 
 class SmsBackgroundReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != "android.provider.Telephony.SMS_RECEIVED") return
+        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION &&
+            intent.action != "android.provider.Telephony.SMS_RECEIVED") return
 
         var subscriptionId = intent.getIntExtra("subscription", -1)
         if (subscriptionId == -1) subscriptionId = intent.getIntExtra("android.telephony.extra.SUBSCRIPTION_INDEX", -1)
@@ -28,9 +29,8 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
             return
         }
 
-        val bundle = intent.extras ?: return
-        val pdus = bundle.get("pdus") as? Array<*> ?: return
-        val format = bundle.getString("format")
+        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+        if (messages.isNullOrEmpty()) return
 
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
@@ -45,15 +45,16 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                     if (v is String) k to v else null
                 }.toMap()
 
-                pdus.forEach { pdu ->
-                    val msg = SmsMessage.createFromPdu(pdu as ByteArray, format)
-                    val sender = msg.originatingAddress ?: "Unknown"
-                    val body = msg.messageBody ?: ""
-                    val timestamp = msg.timestampMillis
+                // Group multi-part SMS by sender to reconstruct full concatenated messages
+                val messagesBySender = messages.groupBy { it.displayOriginatingAddress ?: it.originatingAddress ?: "Unknown" }
+
+                for ((sender, parts) in messagesBySender) {
+                    val fullBody = parts.joinToString("") { it.displayMessageBody ?: it.messageBody ?: "" }
+                    val timestamp = parts.firstOrNull()?.timestampMillis ?: System.currentTimeMillis()
 
                     val parsedTx = SmsParser.parseMessage(
                         sender = sender,
-                        body = body,
+                        body = fullBody,
                         timestamp = timestamp,
                         predictionService = predictionService,
                         merchantOverrides = merchantOverrides
@@ -61,7 +62,7 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
 
                     if (parsedTx != null) {
                         if (db.ignoredHashDao().isHashIgnored(parsedTx.hash)) {
-                            return@forEach
+                            continue
                         }
                         if (autoDropDuplicates && db.transactionDao().existsSimilarTransaction(
                             body = parsedTx.body,
@@ -69,13 +70,17 @@ class SmsBackgroundReceiver : BroadcastReceiver() {
                             merchant = parsedTx.merchant,
                             timestamp = parsedTx.timestamp
                         )) {
-                            return@forEach
+                            continue
                         }
                         val rowId = db.transactionDao().insert(parsedTx)
                         if (rowId != -1L) {
                             Log.d("SmsBackgroundReceiver", "Saved transaction: ₹${parsedTx.amount} to ${parsedTx.merchant}")
                             db.transactionDao().deleteDemoTransactions()
                             prefs.edit().putBoolean("is_demo_mode", false).apply()
+                            val lastSync = prefs.getLong("last_sms_sync_timestamp", 0L)
+                            if (parsedTx.timestamp > lastSync) {
+                                prefs.edit().putLong("last_sms_sync_timestamp", parsedTx.timestamp).apply()
+                            }
                             predictionService.checkSpendingLimits()
                         }
                     }

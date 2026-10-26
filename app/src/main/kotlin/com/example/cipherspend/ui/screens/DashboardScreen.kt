@@ -10,9 +10,11 @@ import android.provider.Settings
 import com.example.cipherspend.NotificationService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -168,11 +170,14 @@ fun DashboardScreen(
     }
 
     fun refreshPermissionsState() {
+        profileImage = prefs.getString("pref_profile_image", "assets/avatars/avatar1.png")
         val smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
         val notifGranted = isNotificationServiceEnabled(context)
 
-        if (!hasSmsPermission && smsGranted) {
+        val initialSyncDone = prefs.getBoolean("initial_sms_sync_done", false) ||
+                prefs.getLong("last_sms_sync_timestamp", 0L) > 0L
+        if (!hasSmsPermission && smsGranted && !initialSyncDone) {
             viewModel.exitDemoMode()
             coroutineScope.launch {
                 SmsSyncManager.syncInbox(context, fullRescan = true)
@@ -187,9 +192,9 @@ fun DashboardScreen(
         coroutineScope.launch {
             delay(150)
             refreshPermissionsState()
-            delay(300)
+            delay(150)
             refreshPermissionsState()
-            delay(600)
+            delay(300)
             refreshPermissionsState()
         }
     }
@@ -224,7 +229,9 @@ fun DashboardScreen(
     var pendingPermissionAction by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(hasSmsPermission) {
-        if (hasSmsPermission) {
+        val initialSyncDone = prefs.getBoolean("initial_sms_sync_done", false) ||
+                prefs.getLong("last_sms_sync_timestamp", 0L) > 0L
+        if (hasSmsPermission && !initialSyncDone) {
             SmsSyncManager.syncInbox(context)
         }
     }
@@ -444,6 +451,10 @@ fun DashboardScreen(
                 onNextMonth = {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     viewModel.selectNextMonth()
+                },
+                onCurrentMonth = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.selectCurrentMonth()
                 }
             )
         }
@@ -452,6 +463,12 @@ fun DashboardScreen(
             val totalSpent = forecast?.spent ?: 0.0
             val budget = forecast?.budget ?: 25000.0
             val progress = forecast?.progress ?: (if (budget > 0) (totalSpent / budget).toFloat().coerceIn(0f, 1f) else 0f)
+            val animatedProgress by animateFloatAsState(
+                targetValue = progress,
+                animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                label = "budgetProgress"
+            )
+            val remaining = budget - totalSpent
 
             Box(
                 modifier = Modifier
@@ -472,13 +489,13 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (progress >= 0.8f) Color(0xFFFF5252).copy(alpha = 0.2f) else CyberCyan.copy(alpha = 0.15f))
+                                .background(if (progress >= 0.8f) DangerRed.copy(alpha = 0.2f) else CyberCyan.copy(alpha = 0.15f))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "${(progress * 100).toInt()}% Used",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (progress >= 0.8f) Color(0xFFFF5252) else CyberCyan,
+                                    color = if (progress >= 0.8f) DangerRed else CyberCyan,
                                     fontWeight = FontWeight.Bold
                                 )
                             )
@@ -498,20 +515,38 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Text(
-                        text = "Monthly Budget: ₹${"%,.0f".format(budget)}",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Monthly Budget: ₹${"%,.0f".format(budget)}",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                        )
+                        val remainingText = if (remaining >= 0) {
+                            "₹${"%,.0f".format(remaining)} left"
+                        } else {
+                            "₹${"%,.0f".format(-remaining)} over budget"
+                        }
+                        Text(
+                            text = remainingText,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (remaining >= 0) NeonEmerald else DangerRed,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     LinearProgressIndicator(
-                        progress = { progress },
+                        progress = { animatedProgress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = if (progress >= 0.8f) Color(0xFFFF5252) else CyberCyan,
+                        color = if (progress >= 1.0f) DangerRed else if (progress >= 0.8f) AmberGlow else CyberCyan,
                         trackColor = Color.White.copy(alpha = 0.1f)
                     )
 
@@ -527,121 +562,85 @@ fun DashboardScreen(
                     }
                     val safePerDay = (budget - totalSpent).coerceAtLeast(0.0) / daysLeftInMonth.coerceAtLeast(1)
 
-                    val todayCalendar = remember {
-                        Calendar.getInstance().apply {
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                    }
-                    val todayStart = todayCalendar.timeInMillis
-                    val todaySpend = remember(transactions) {
-                        transactions.filter { it.timestamp >= todayStart && it.category != "Refund" }.sumOf { it.amount }
-                    }
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // 1. Safe/Day
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "Today's Spend",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
-                                    maxLines = 1
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "₹${"%,.0f".format(todaySpend)}",
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        color = AmberGlow,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    ),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                                .padding(vertical = 12.dp, horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Safe/Day",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 11.sp),
                                     maxLines = 1
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
                                     text = "₹${"%,.0f".format(safePerDay)}/d",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         color = CyberCyan,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontSize = 13.sp
                                     ),
                                     maxLines = 1
                                 )
                             }
                         }
 
+                        // 2. Avg Burn
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                                .padding(vertical = 12.dp, horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Avg Burn",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 11.sp),
                                     maxLines = 1
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
                                     text = "₹${"%,.0f".format(forecast?.dailyAverage ?: 0.0)}/d",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         color = NeonEmerald,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontSize = 13.sp
                                     ),
                                     maxLines = 1
                                 )
                             }
                         }
 
+                        // 3. Top Spend
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                                .padding(vertical = 12.dp, horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Top Spend",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.5.sp),
+                                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 11.sp),
                                     maxLines = 1
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
                                     text = forecast?.topCategory ?: "None",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         color = TextPrimary,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontSize = 13.sp
                                     ),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis

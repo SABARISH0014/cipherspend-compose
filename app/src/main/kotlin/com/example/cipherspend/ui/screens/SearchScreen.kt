@@ -284,6 +284,56 @@ fun SearchScreen(
             }
         }
 
+        val hasTypeFilter = !selectedType.isNullOrBlank() && selectedType != "All"
+        val hasDateFilter = startDate != null || endDate != null
+
+        if (hasTypeFilter || hasDateFilter) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (hasTypeFilter) {
+                    Box(
+                        modifier = Modifier
+                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = Color(0xFF131B2A))
+                            .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            .clickable { viewModel.setTypeFilter(null) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Method: $selectedType ✕",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = CyberCyan,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+
+                if (hasDateFilter) {
+                    Box(
+                        modifier = Modifier
+                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = Color(0xFF131B2A))
+                            .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            .clickable { viewModel.setDateRange(null, null) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Date Range Active ✕",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = CyberCyan,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Results Section
@@ -304,6 +354,31 @@ fun SearchScreen(
                 )
             }
         } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${searchResults.size} transaction(s)",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                Text(
+                    text = "Total: ₹${"%,.2f".format(searchResults.sumOf { it.amount })}",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = CyberCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()

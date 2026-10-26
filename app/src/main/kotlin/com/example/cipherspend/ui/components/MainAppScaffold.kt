@@ -224,7 +224,10 @@ fun MainAppScaffold(
                         onNavigateToProfileEdit = onNavigateToProfileEdit,
                         onNavigateToManualEntry = onNavigateToManualEntry
                     )
-                    1 -> AnalyticsScreen(viewModel = transactionViewModel)
+                    1 -> AnalyticsScreen(
+                        viewModel = transactionViewModel,
+                        onNavigateToDetail = onNavigateToDetail
+                    )
                     2 -> SearchScreen(
                         viewModel = transactionViewModel,
                         onNavigateToDetail = onNavigateToDetail

@@ -341,7 +341,7 @@ fun ProfileEditScreen(
                         OutlinedTextField(
                             value = monthlyBudget,
                             onValueChange = {
-                                monthlyBudget = it.filter { ch -> ch.isDigit() }
+                                monthlyBudget = it.filter { ch -> ch.isDigit() || ch == '.' }
                                 formError = null
                             },
                             label = { Text("Monthly Budget (₹)") },
@@ -591,7 +591,7 @@ fun ProfileEditScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Your encrypted database will be safely re-keyed with this new PIN.",
+                        text = "Enter and confirm your new 4-digit Master Vault PIN.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
 

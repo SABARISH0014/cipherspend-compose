@@ -128,18 +128,34 @@ fun MonthSelector(
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onCurrentMonth?.invoke()
                 }
-                .padding(horizontal = 22.dp, vertical = 9.dp),
+                .padding(horizontal = 20.dp, vertical = 9.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = formattedMonth,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    letterSpacing = 0.5.sp
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = formattedMonth,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        letterSpacing = 0.5.sp
+                    )
                 )
-            )
+                if (!isCurrentMonth && onCurrentMonth != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = " • Tap for Today",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = CyberCyan,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.width(10.dp))

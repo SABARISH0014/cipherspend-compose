@@ -177,6 +177,15 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         refreshForecast()
     }
 
+    fun selectCurrentMonth() {
+        _selectedMonth.value = YearMonth.now()
+        refreshForecast()
+    }
+
+    fun resetToCurrentMonth() {
+        selectCurrentMonth()
+    }
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
     }

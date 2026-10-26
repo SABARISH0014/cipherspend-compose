@@ -54,7 +54,8 @@ import java.util.Locale
 
 @Composable
 fun AnalyticsScreen(
-    viewModel: TransactionViewModel
+    viewModel: TransactionViewModel,
+    onNavigateToDetail: (Long) -> Unit = {}
 ) {
     val forecast by viewModel.forecast.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
@@ -112,7 +113,8 @@ fun AnalyticsScreen(
             MonthSelector(
                 selectedMonth = selectedMonth,
                 onPreviousMonth = { viewModel.selectPreviousMonth() },
-                onNextMonth = { viewModel.selectNextMonth() }
+                onNextMonth = { viewModel.selectNextMonth() },
+                onCurrentMonth = { viewModel.selectCurrentMonth() }
             )
         }
 
@@ -405,6 +407,7 @@ fun AnalyticsScreen(
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(Color.White.copy(alpha = 0.03f))
+                                                .clickable { onNavigateToDetail(tx.id) }
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically

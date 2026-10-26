@@ -42,6 +42,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import com.example.cipherspend.service.PredictionService
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +88,7 @@ fun ManualEntryScreen(
     var amountText by remember { mutableStateOf("") }
     var merchantText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Food & Dining") }
+    var userManuallyPickedCategory by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("UPI") }
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -206,6 +208,12 @@ fun ManualEntryScreen(
                                 onValueChange = {
                                     merchantText = it
                                     errorMessage = null
+                                    if (!userManuallyPickedCategory && it.length >= 3) {
+                                        val predicted = PredictionService.getInstance(context).classifyByKeywords(it)
+                                        if (predicted != null) {
+                                            selectedCategory = predicted
+                                        }
+                                    }
                                 },
                                 label = { Text("Merchant / Description") },
                                 leadingIcon = {
@@ -303,6 +311,7 @@ fun ManualEntryScreen(
                                                 )
                                                 .clickable {
                                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    userManuallyPickedCategory = true
                                                     selectedCategory = cat
                                                 }
                                                 .padding(horizontal = 14.dp, vertical = 9.dp)

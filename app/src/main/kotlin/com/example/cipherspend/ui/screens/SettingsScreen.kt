@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +42,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CopyAll
@@ -667,24 +669,32 @@ fun SettingsScreen(
                                 .weight(1f)
                                 .height(44.dp),
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = CyberCyan.copy(alpha = 0.2f),
                                 contentColor = CyberCyan
                             ),
                             border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.5f))
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FileDownload,
-                                contentDescription = "Backup",
-                                tint = CyberCyan,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Backup Vault",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FileDownload,
+                                    contentDescription = "Backup",
+                                    tint = CyberCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Backup Vault",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
 
                         Button(
@@ -695,24 +705,32 @@ fun SettingsScreen(
                                 .weight(1f)
                                 .height(44.dp),
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = PurpleGlow.copy(alpha = 0.2f),
                                 contentColor = PurpleGlow
                             ),
                             border = BorderStroke(1.dp, PurpleGlow.copy(alpha = 0.5f))
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FileUpload,
-                                contentDescription = "Restore",
-                                tint = PurpleGlow,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Restore Backup",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FileUpload,
+                                    contentDescription = "Restore",
+                                    tint = PurpleGlow,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Restore Backup",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
 
