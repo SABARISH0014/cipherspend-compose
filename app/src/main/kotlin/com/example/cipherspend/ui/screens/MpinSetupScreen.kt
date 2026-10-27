@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -92,6 +93,8 @@ fun MpinSetupScreen(
         label = "mpinContentOffsetY"
     )
 
+    var step by remember { mutableStateOf(1) } // 1: Enter, 2: Confirm
+    var firstPin by remember { mutableStateOf("") }
     var enteredPin by remember { mutableStateOf("") }
     var enableBiometric by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -99,10 +102,21 @@ fun MpinSetupScreen(
 
     fun handleDigitPress(digit: String) {
         when (digit) {
-            "CLEAR" -> enteredPin = ""
-            "DEL" -> {
-                if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
+            "CLEAR" -> {
+                enteredPin = ""
                 errorMessage = null
+            }
+            "DEL" -> {
+                if (enteredPin.isNotEmpty()) {
+                    enteredPin = enteredPin.dropLast(1)
+                    errorMessage = null
+                } else if (step == 2) {
+                    // Back to step 1 if deleting at empty pin in step 2
+                    step = 1
+                    enteredPin = firstPin
+                    firstPin = ""
+                    errorMessage = null
+                }
             }
             else -> {
                 if (enteredPin.length < 4) {
@@ -110,12 +124,29 @@ fun MpinSetupScreen(
                     enteredPin = nextPin
                     errorMessage = null
                     if (nextPin.length == 4) {
-                        val success = authViewModel.setupMpinAndBiometric(nextPin, enableBiometric)
-                        if (success) {
-                            onMpinConfigured()
-                        } else {
-                            errorMessage = "Failed to configure MPIN. Please try again."
+                        if (step == 1) {
+                            // Advance to confirmation step
+                            firstPin = nextPin
                             enteredPin = ""
+                            step = 2
+                        } else {
+                            // Step 2: Verify confirmation
+                            if (nextPin == firstPin) {
+                                val success = authViewModel.setupMpinAndBiometric(nextPin, enableBiometric)
+                                if (success) {
+                                    onMpinConfigured()
+                                } else {
+                                    errorMessage = "Failed to configure MPIN. Please try again."
+                                    enteredPin = ""
+                                    step = 1
+                                    firstPin = ""
+                                }
+                            } else {
+                                errorMessage = "MPINs do not match. Please try again."
+                                enteredPin = ""
+                                step = 1
+                                firstPin = ""
+                            }
                         }
                     }
                 }
@@ -133,6 +164,7 @@ fun MpinSetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .imePadding()
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -165,7 +197,7 @@ fun MpinSetupScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Setup Master MPIN",
+                    text = if (step == 1) "Setup Master MPIN" else "Confirm Master MPIN",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold
@@ -175,7 +207,10 @@ fun MpinSetupScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Set a 4-digit Master MPIN. Your financial vault is encrypted locally and never leaves this phone.",
+                    text = if (step == 1)
+                        "Set a 4-digit Master MPIN. Your financial vault is encrypted locally and never leaves this phone."
+                    else
+                        "Re-enter your 4-digit Master MPIN to confirm and secure your vault.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextSecondary,
                         textAlign = TextAlign.Center,
@@ -183,6 +218,25 @@ fun MpinSetupScreen(
                     ),
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
+                if (step == 2) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "← Back to Step 1",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = CyberCyan,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        modifier = Modifier
+                            .clickable {
+                                step = 1
+                                firstPin = ""
+                                enteredPin = ""
+                                errorMessage = null
+                            }
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 

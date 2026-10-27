@@ -640,7 +640,7 @@ fun SettingsScreen(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Military-Grade Local Encryption",
+                        text = "Hardware-Backed AES-256 Local Encryption",
                         style = MaterialTheme.typography.titleSmall.copy(
                             color = NeonEmerald,
                             fontWeight = FontWeight.Bold

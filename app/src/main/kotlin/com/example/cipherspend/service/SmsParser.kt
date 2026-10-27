@@ -22,7 +22,7 @@ object SmsParser {
     )
 
     private val UPI_SLASH_REGEX = Pattern.compile(
-        """(?i)UPI/(?:P2M|P2A|DR|CR)/[0-9]+/([A-Za-z0-9\s.&_\-]+?)(?:/|\s+|$)"""
+        """(?i)UPI/(?:P2M|P2A|DR|CR)/[0-9]+/([A-Za-z0-9\s.&_\-]+?)(?:/|$)"""
     )
 
     private val STANDARD_MERCHANT_REGEX = Pattern.compile(

@@ -12,6 +12,7 @@
         android:label="CipherSpend"
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.CipherSpend"
+        android:allowBackup="false"
         android:enableOnBackInvokedCallback="true"
         android:hardwareAccelerated="true">
         

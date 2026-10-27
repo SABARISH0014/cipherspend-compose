@@ -1,0 +1,18 @@
+# CipherSpend Production Release Signing Configuration Template
+# DO NOT COMMIT key.properties WITH REAL PASSWORDS OR PRIVATE KEYS TO VERSION CONTROL.
+# key.properties is already excluded in .gitignore.
+#
+# Usage:
+# 1. Copy this file to 'key.properties' in the repository root directory.
+# 2. Fill in the path to your production keystore file and credentials.
+#
+# Alternatively, you can export environment variables in your secure CI/CD runner:
+#   KEYSTORE_PATH="/path/to/cipherspend-release.jks"
+#   KEYSTORE_PASSWORD="your-keystore-password"
+#   KEY_ALIAS="cipherspend-key"
+#   KEY_PASSWORD="your-key-password"
+
+storeFile=release/cipherspend-release.jks
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyAlias=cipherspend-release-key
+keyPassword=YOUR_KEY_PASSWORD

@@ -14,6 +14,16 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val storeFilePath = keystoreProperties.getProperty("storeFile") ?: System.getenv("KEYSTORE_PATH")
+val storePasswordVal = keystoreProperties.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+val keyAliasVal = keystoreProperties.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS")
+val keyPasswordVal = keystoreProperties.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD")
+
+val hasReleaseSigning = !storeFilePath.isNullOrBlank() &&
+        !storePasswordVal.isNullOrBlank() &&
+        !keyAliasVal.isNullOrBlank() &&
+        !keyPasswordVal.isNullOrBlank()
+
 android {
     namespace = "com.example.cipherspend"
     compileSdk = 36
@@ -51,12 +61,12 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (hasReleaseSigning) {
             create("release") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keyAliasVal
+                keyPassword = keyPasswordVal
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = storePasswordVal
             }
         }
     }
@@ -69,10 +79,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
-            } else {
-                signingConfig = signingConfigs.getByName("debug")
             }
         }
         getByName("debug") {
@@ -137,4 +145,23 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+}
+
+gradle.taskGraph.whenReady {
+    val releaseBuildRequested = allTasks.any {
+        (it.name.equals("bundleRelease", ignoreCase = true) ||
+         it.name.equals("assembleRelease", ignoreCase = true) ||
+         it.name.equals("packageRelease", ignoreCase = true)) &&
+        !it.name.contains("Test", ignoreCase = true) &&
+        !it.name.contains("Lint", ignoreCase = true)
+    }
+    if (releaseBuildRequested && !hasReleaseSigning) {
+        throw GradleException(
+            "CRITICAL RELEASE SIGNING ERROR: Production release build requested without valid signing credentials!\n" +
+            "Release builds strictly require an explicitly configured production keystore.\n" +
+            "Please create 'key.properties' in the project root or export environment variables:\n" +
+            "  KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD\n" +
+            "See 'key.properties.example' for setup instructions."
+        )
+    }
 }

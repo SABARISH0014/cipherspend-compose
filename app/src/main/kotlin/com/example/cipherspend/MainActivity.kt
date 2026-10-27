@@ -146,7 +146,8 @@ class MainActivity : FragmentActivity() {
 
                     // 6. Unlock Screen (MPIN Login & Biometrics)
                     composable("unlock") {
-                        val isBiometricEnabled = authViewModel.isBiometricEnabled.value
+                        val isBiometricEnabled by authViewModel.isBiometricEnabled.collectAsState()
+                        val lockoutSeconds by authViewModel.lockoutSecondsRemaining.collectAsState()
                         UnlockScreen(
                             onUnlockWithPin = { pin ->
                                 val success = authViewModel.verifyMpin(pin)
@@ -164,7 +165,8 @@ class MainActivity : FragmentActivity() {
                                     }
                                 }
                             },
-                            isBiometricAvailable = isBiometricEnabled
+                            isBiometricAvailable = isBiometricEnabled,
+                            lockoutSeconds = lockoutSeconds
                         )
                     }
 

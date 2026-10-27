@@ -20,8 +20,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
@@ -415,7 +417,11 @@ fun SearchScreen(
                     )
                     .padding(22.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                val dialogScrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier.verticalScroll(dialogScrollState),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
                     // Header
                     Row(
                         modifier = Modifier.fillMaxWidth(),

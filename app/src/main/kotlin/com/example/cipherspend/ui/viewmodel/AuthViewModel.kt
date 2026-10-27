@@ -4,10 +4,16 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import com.example.cipherspend.data.db.DatabaseProvider
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.security.MessageDigest
+import java.security.SecureRandom
+import android.util.Base64
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("cipher_auth_prefs", Context.MODE_PRIVATE)
@@ -23,6 +29,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _phoneNumber = MutableStateFlow<String>("")
     val phoneNumber: StateFlow<String> = _phoneNumber.asStateFlow()
+
+    private val _failedAttempts = MutableStateFlow(0)
+    val failedAttempts: StateFlow<Int> = _failedAttempts.asStateFlow()
+
+    private val _lockoutSecondsRemaining = MutableStateFlow(0)
+    val lockoutSecondsRemaining: StateFlow<Int> = _lockoutSecondsRemaining.asStateFlow()
+
+    private var lockoutJob: Job? = null
 
     init {
         checkAuthState()
@@ -75,38 +89,108 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         generalPrefs.edit().putInt("verified_sub_id", matchedSubId).apply()
     }
 
+    private fun getOrCreateSalt(): String {
+        var salt = prefs.getString("user_mpin_salt", null)
+        if (salt == null) {
+            val randomBytes = ByteArray(16)
+            SecureRandom().nextBytes(randomBytes)
+            salt = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
+            prefs.edit().putString("user_mpin_salt", salt).apply()
+        }
+        return salt
+    }
+
+    private fun hashWithSalt(input: String, salt: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest("$salt$input".toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
+
     fun setupMpinAndBiometric(mpin: String, enableBiometric: Boolean): Boolean {
         if (mpin.length != 4 || !mpin.all { it.isDigit() }) return false
 
-        val hash = hashString(mpin)
+        val salt = getOrCreateSalt()
+        val hash = hashWithSalt(mpin, salt)
         prefs.edit()
             .putString("user_mpin_hash", hash)
+            .putString("user_mpin_salt", salt)
             .putBoolean("biometric_enabled", enableBiometric)
             .apply()
 
         _isConfigured.value = true
         _isBiometricEnabled.value = enableBiometric
         _isAuthenticated.value = true
+        _failedAttempts.value = 0
+        _lockoutSecondsRemaining.value = 0
+        lockoutJob?.cancel()
         return true
     }
 
     fun verifyMpin(mpin: String): Boolean {
+        if (_lockoutSecondsRemaining.value > 0) return false
+
         val storedHash = prefs.getString("user_mpin_hash", null) ?: return false
-        val matches = hashString(mpin) == storedHash
+        val salt = prefs.getString("user_mpin_salt", null)
+
+        val matches = if (salt != null) {
+            hashWithSalt(mpin, salt) == storedHash
+        } else {
+            // Check legacy unsalted hash for backwards compatibility
+            val legacyMatch = hashString(mpin) == storedHash
+            if (legacyMatch) {
+                // Transparently migrate to salted hash
+                val newSalt = getOrCreateSalt()
+                val newHash = hashWithSalt(mpin, newSalt)
+                prefs.edit().putString("user_mpin_hash", newHash).apply()
+            }
+            legacyMatch
+        }
+
         if (matches) {
             _isAuthenticated.value = true
+            _failedAttempts.value = 0
+            _lockoutSecondsRemaining.value = 0
+            lockoutJob?.cancel()
+        } else {
+            val attempts = _failedAttempts.value + 1
+            _failedAttempts.value = attempts
+            if (attempts >= 5) {
+                startLockout(30)
+            }
         }
         return matches
     }
 
+    private fun startLockout(seconds: Int) {
+        lockoutJob?.cancel()
+        _lockoutSecondsRemaining.value = seconds
+        lockoutJob = viewModelScope.launch {
+            for (sec in seconds downTo 1) {
+                _lockoutSecondsRemaining.value = sec
+                delay(1000L)
+            }
+            _lockoutSecondsRemaining.value = 0
+            _failedAttempts.value = 0
+        }
+    }
+
     fun onBiometricSuccess() {
         _isAuthenticated.value = true
+        _failedAttempts.value = 0
+        _lockoutSecondsRemaining.value = 0
+        lockoutJob?.cancel()
     }
 
     fun changeMpin(newMpin: String): Boolean {
         if (newMpin.length != 4 || !newMpin.all { it.isDigit() }) return false
-        val hash = hashString(newMpin)
-        prefs.edit().putString("user_mpin_hash", hash).apply()
+        val salt = getOrCreateSalt()
+        val hash = hashWithSalt(newMpin, salt)
+        prefs.edit()
+            .putString("user_mpin_hash", hash)
+            .putString("user_mpin_salt", salt)
+            .apply()
+        _failedAttempts.value = 0
+        _lockoutSecondsRemaining.value = 0
+        lockoutJob?.cancel()
         return true
     }
 
@@ -132,11 +216,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         val generalPrefs = appContext.getSharedPreferences("CipherSpendPrefs", Context.MODE_PRIVATE)
         generalPrefs.edit().clear().commit()
 
-        // 4. Reset in-memory StateFlows
+        // 4. Reset in-memory StateFlows and cancel lockouts
+        lockoutJob?.cancel()
         _isConfigured.value = false
         _isAuthenticated.value = false
         _isBiometricEnabled.value = false
         _phoneNumber.value = ""
+        _failedAttempts.value = 0
+        _lockoutSecondsRemaining.value = 0
     }
 
     private fun hashString(input: String): String {

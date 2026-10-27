@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,10 +50,11 @@ import com.example.cipherspend.ui.theme.glassEffect
 fun UnlockScreen(
     onUnlockWithPin: (String) -> Boolean,
     onTriggerBiometric: () -> Unit,
-    isBiometricAvailable: Boolean
+    isBiometricAvailable: Boolean,
+    lockoutSeconds: Int = 0
 ) {
-    LaunchedEffect(isBiometricAvailable) {
-        if (isBiometricAvailable) {
+    LaunchedEffect(isBiometricAvailable, lockoutSeconds) {
+        if (isBiometricAvailable && lockoutSeconds <= 0) {
             onTriggerBiometric()
         }
     }
@@ -138,7 +140,16 @@ fun UnlockScreen(
                     }
                 }
 
-                if (isError) {
+                if (lockoutSeconds > 0) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Too many failed attempts. Try again in ${lockoutSeconds}s",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = DangerRed,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                } else if (isError) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
                         text = "Incorrect MPIN. Please try again.",
@@ -153,6 +164,9 @@ fun UnlockScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        alpha = if (lockoutSeconds > 0) 0.45f else 1f
+                    }
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -175,6 +189,7 @@ fun UnlockScreen(
                                     .height(56.dp)
                                     .glassEffect(shape = RoundedCornerShape(14.dp))
                                     .clickable {
+                                        if (lockoutSeconds > 0) return@clickable
                                         when (digit) {
                                             "BIO" -> {
                                                 if (isBiometricAvailable) onTriggerBiometric()
@@ -203,14 +218,12 @@ fun UnlockScreen(
                             ) {
                                 when (digit) {
                                     "BIO" -> {
-                                        if (isBiometricAvailable) {
-                                            Icon(
-                                                imageVector = Icons.Default.Fingerprint,
-                                                contentDescription = "Biometric Unlock",
-                                                tint = NeonEmerald,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.Fingerprint,
+                                            contentDescription = "Biometric Unlock",
+                                            tint = if (isBiometricAvailable && lockoutSeconds <= 0) NeonEmerald else Color.White.copy(alpha = 0.15f),
+                                            modifier = Modifier.size(24.dp)
+                                        )
                                     }
                                     "DEL" -> {
                                         Icon(
