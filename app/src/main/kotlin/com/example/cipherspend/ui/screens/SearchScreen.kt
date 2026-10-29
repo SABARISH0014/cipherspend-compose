@@ -62,6 +62,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.ui.components.CipherSnackbarManager
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.PurpleGlow
@@ -164,7 +165,7 @@ fun SearchScreen(
             // Export CSV Button
             Box(
                 modifier = Modifier
-                    .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                    .glassEffect(shape = CircleShape, backgroundColor = CardSurface)
                     .clickable {
                         if (searchResults.isEmpty()) {
                             CipherSnackbarManager.showMessage("No transactions found to export", isError = true)
@@ -214,8 +215,8 @@ fun SearchScreen(
                     unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    focusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.8f),
-                    unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.6f)
+                    focusedContainerColor = CardSurface.copy(alpha = 0.8f),
+                    unfocusedContainerColor = CardSurface.copy(alpha = 0.6f)
                 )
             )
 
@@ -223,7 +224,7 @@ fun SearchScreen(
             Box(
                 modifier = Modifier
                     .size(54.dp)
-                    .glassEffect(shape = RoundedCornerShape(16.dp), backgroundColor = Color(0xFF131B2A))
+                    .glassEffect(shape = RoundedCornerShape(16.dp), backgroundColor = CardSurface)
                     .clickable { showFilterDialog = true },
                 contentAlignment = Alignment.Center
             ) {
@@ -299,7 +300,7 @@ fun SearchScreen(
                 if (hasTypeFilter) {
                     Box(
                         modifier = Modifier
-                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = Color(0xFF131B2A))
+                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = CardSurface)
                             .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                             .clickable { viewModel.setTypeFilter(null) }
                             .padding(horizontal = 10.dp, vertical = 6.dp)
@@ -318,7 +319,7 @@ fun SearchScreen(
                 if (hasDateFilter) {
                     Box(
                         modifier = Modifier
-                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = Color(0xFF131B2A))
+                            .glassEffect(shape = RoundedCornerShape(10.dp), backgroundColor = CardSurface)
                             .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                             .clickable { viewModel.setDateRange(null, null) }
                             .padding(horizontal = 10.dp, vertical = 6.dp)
@@ -356,6 +357,14 @@ fun SearchScreen(
                 )
             }
         } else {
+            val netSearchTotal = remember(searchResults, selectedCat) {
+                if (selectedCat.equals("Refund", ignoreCase = true)) {
+                    searchResults.sumOf { it.amount }
+                } else {
+                    searchResults.filter { !it.category.equals("Refund", ignoreCase = true) }.sumOf { it.amount }
+                }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -371,7 +380,7 @@ fun SearchScreen(
                     )
                 )
                 Text(
-                    text = "Total: ₹${"%,.2f".format(searchResults.sumOf { it.amount })}",
+                    text = "Total: ₹${"%,.2f".format(netSearchTotal)}",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = CyberCyan,
                         fontWeight = FontWeight.Bold
@@ -394,7 +403,7 @@ fun SearchScreen(
                     )
                 }
                 item {
-                    Spacer(modifier = Modifier.height(110.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
                 }
             }
         }

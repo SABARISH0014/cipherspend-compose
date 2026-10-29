@@ -39,6 +39,7 @@ import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.TextPrimary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -154,13 +155,24 @@ fun CipherSnackbarHost(
                     SnackbarType.INFO -> CyberCyan
                 }
 
+                val toastBg = if (ThemeManager.isDark) {
+                    Color(0xFF162030).copy(alpha = 0.95f)
+                } else {
+                    Color(0xFFFFFFFF).copy(alpha = 0.98f)
+                }
+                val toastBorder = if (ThemeManager.isDark) {
+                    tint.copy(alpha = 0.50f)
+                } else {
+                    tint.copy(alpha = 0.40f)
+                }
+
                 Box(
                     modifier = Modifier
                         .wrapContentWidth()
                         .glassEffect(
                             shape = RoundedCornerShape(24.dp),
-                            backgroundColor = Color(0xFF0F1726).copy(alpha = 0.94f),
-                            borderColor = tint.copy(alpha = 0.45f),
+                            backgroundColor = toastBg,
+                            borderColor = toastBorder,
                             borderWidth = 1.dp
                         )
                         .padding(horizontal = 18.dp, vertical = 11.dp)

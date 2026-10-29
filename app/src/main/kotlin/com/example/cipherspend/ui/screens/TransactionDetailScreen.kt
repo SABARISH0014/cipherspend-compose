@@ -1,6 +1,7 @@
 package com.example.cipherspend.ui.screens
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.cipherspend.ui.components.CipherSnackbarManager
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -61,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -69,6 +72,8 @@ import androidx.compose.ui.unit.sp
 import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.ui.components.getCategoryColor
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -77,6 +82,7 @@ import com.example.cipherspend.ui.theme.PurpleGlow
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 import kotlinx.coroutines.delay
@@ -178,9 +184,12 @@ fun TransactionDetailScreen(
                 Text("Transaction Record Not Found", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
                 Button(
                     onClick = { onNavigateBack() },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CyberCyan,
+                        contentColor = if (ThemeManager.isDark) Color.Black else Color.White
+                    )
                 ) {
-                    Text("Go Back", color = Color.Black)
+                    Text("Go Back", color = if (ThemeManager.isDark) Color.Black else Color.White)
                 }
             }
         }
@@ -222,8 +231,10 @@ fun TransactionDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .imePadding()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
+                .padding(top = 10.dp, bottom = 16.dp)
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -264,8 +275,15 @@ fun TransactionDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(TicketShape(toothWidth = 14.dp, toothHeight = 6.dp))
-                    .background(Color(0xFF0F1726).copy(alpha = 0.95f))
-                    .border(1.dp, Color.White.copy(alpha = 0.12f), TicketShape(toothWidth = 14.dp, toothHeight = 6.dp))
+                    .background(
+                        if (ThemeManager.isDark) Color(0xFF0F1726).copy(alpha = 0.95f)
+                        else Color.White
+                    )
+                    .border(
+                        1.dp,
+                        if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
+                        TicketShape(toothWidth = 14.dp, toothHeight = 6.dp)
+                    )
                     .padding(vertical = 24.dp, horizontal = 20.dp)
             ) {
                 Column(
@@ -307,26 +325,30 @@ fun TransactionDetailScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(catColor.copy(alpha = 0.15f))
-                                .border(1.dp, catColor.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                                .background(catColor.copy(alpha = if (ThemeManager.isDark) 0.18f else 0.12f))
+                                .border(1.dp, catColor.copy(alpha = if (ThemeManager.isDark) 0.40f else 0.30f), RoundedCornerShape(8.dp))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = currentTx.category,
-                                style = MaterialTheme.typography.labelSmall.copy(color = catColor, fontWeight = FontWeight.SemiBold)
+                                style = MaterialTheme.typography.labelSmall.copy(color = catColor, fontWeight = FontWeight.SemiBold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.06f))
-                                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                                .background(if (ThemeManager.isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.05f))
+                                .border(1.dp, if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.10f), RoundedCornerShape(8.dp))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = currentTx.type,
-                                style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
+                                style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
@@ -337,8 +359,8 @@ fun TransactionDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(CyberCyan.copy(alpha = 0.15f))
-                                    .border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                                    .background(CyberCyan.copy(alpha = if (ThemeManager.isDark) 0.15f else 0.12f))
+                                    .border(1.dp, CyberCyan.copy(alpha = if (ThemeManager.isDark) 0.35f else 0.25f), RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
@@ -346,7 +368,9 @@ fun TransactionDetailScreen(
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = CyberCyan,
                                         fontWeight = FontWeight.SemiBold
-                                    )
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -398,10 +422,16 @@ fun TransactionDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSelected) chipColor.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f))
+                                    .background(
+                                        if (isSelected) chipColor.copy(alpha = 0.22f)
+                                        else if (ThemeManager.isDark) Color.White.copy(alpha = 0.06f)
+                                        else Color.Black.copy(alpha = 0.04f)
+                                    )
                                     .border(
                                         1.dp,
-                                        if (isSelected) chipColor else Color.White.copy(alpha = 0.12f),
+                                        if (isSelected) chipColor
+                                        else if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f)
+                                        else Color.Black.copy(alpha = 0.08f),
                                         RoundedCornerShape(10.dp)
                                     )
                                     .clickable {
@@ -478,9 +508,12 @@ fun TransactionDetailScreen(
                                 onValueChange = { editedMerchantName = it },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = CyberCyan,
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                    unfocusedBorderColor = CardBorder,
+                                    focusedContainerColor = if (ThemeManager.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f),
+                                    unfocusedContainerColor = if (ThemeManager.isDark) Color.White.copy(alpha = 0.02f) else Color.Black.copy(alpha = 0.02f),
                                     focusedTextColor = TextPrimary,
                                     unfocusedTextColor = TextPrimary
                                 )
@@ -488,15 +521,24 @@ fun TransactionDetailScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = {
-                                    viewModel.updateMerchantCorrection(currentTx.id, editedMerchantName)
-                                    transaction = currentTx.copy(merchant = editedMerchantName)
+                                    val cleanName = editedMerchantName.trim()
+                                    viewModel.updateMerchantCorrection(currentTx.id, cleanName)
+                                    transaction = currentTx.copy(merchant = cleanName)
                                     isEditingMerchant = false
                                     CipherSnackbarManager.showMessage("Merchant updated & pattern rule saved")
                                 },
+                                enabled = editedMerchantName.trim().isNotEmpty(),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CyberCyan,
+                                    contentColor = if (ThemeManager.isDark) Color.Black else Color.White
+                                )
                             ) {
-                                Icon(imageVector = Icons.Default.Check, contentDescription = "Save", tint = Color.Black)
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save",
+                                    tint = if (ThemeManager.isDark) Color.Black else Color.White
+                                )
                             }
                         }
                     } else {
@@ -579,12 +621,19 @@ fun TransactionDetailScreen(
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF131B2A))
+                border = BorderStroke(
+                    1.dp,
+                    if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.10f)
+                ),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CardSurface,
+                    contentColor = TextPrimary
+                )
             ) {
                 Text("Return to Vault", color = TextPrimary, fontWeight = FontWeight.SemiBold)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

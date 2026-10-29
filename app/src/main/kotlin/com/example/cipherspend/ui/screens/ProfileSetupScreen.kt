@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -52,6 +54,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -59,6 +63,7 @@ import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 
@@ -142,6 +147,8 @@ fun ProfileSetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState),
@@ -161,7 +168,7 @@ fun ProfileSetupScreen(
                 Box(
                     modifier = Modifier
                         .size(80.dp)
-                        .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A)),
+                        .glassEffect(shape = CircleShape, backgroundColor = CardSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -228,13 +235,13 @@ fun ProfileSetupScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = CyberCyan,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedBorderColor = CardBorder,
                                 focusedLabelColor = CyberCyan,
                                 unfocusedLabelColor = TextSecondary,
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary,
-                                focusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.6f),
-                                unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.4f)
+                                focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = CardSurface.copy(alpha = 0.4f)
                             )
                         )
 
@@ -259,13 +266,13 @@ fun ProfileSetupScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = NeonEmerald,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedBorderColor = CardBorder,
                                 focusedLabelColor = NeonEmerald,
                                 unfocusedLabelColor = TextSecondary,
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary,
-                                focusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.6f),
-                                unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.4f)
+                                focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = CardSurface.copy(alpha = 0.4f)
                             )
                         )
 
@@ -290,13 +297,13 @@ fun ProfileSetupScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = CyberCyan,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedBorderColor = CardBorder,
                                 focusedLabelColor = CyberCyan,
                                 unfocusedLabelColor = TextSecondary,
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary,
-                                focusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.6f),
-                                unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.4f)
+                                focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = CardSurface.copy(alpha = 0.4f)
                             )
                         )
                     }
@@ -329,12 +336,12 @@ fun ProfileSetupScreen(
                         .shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(16.dp),
-                            spotColor = CyberCyan.copy(alpha = 0.4f)
+                            spotColor = CyberCyan.copy(alpha = if (ThemeManager.isDark) 0.4f else 0.2f)
                         ),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CyberCyan,
-                        contentColor = Color.Black
+                        contentColor = if (ThemeManager.isDark) Color.Black else Color.White
                     )
                 ) {
                     Text(

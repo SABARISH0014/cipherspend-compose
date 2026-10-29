@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
@@ -121,8 +123,8 @@ fun MonthSelector(
             modifier = Modifier
                 .glassEffect(
                     shape = RoundedCornerShape(20.dp),
-                    backgroundColor = Color(0xFF131B2A).copy(alpha = 0.85f),
-                    borderColor = if (isCurrentMonth) CyberCyan.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f)
+                    backgroundColor = CardSurface.copy(alpha = 0.85f),
+                    borderColor = if (isCurrentMonth) CyberCyan.copy(alpha = 0.35f) else CardBorder
                 )
                 .clickable(enabled = !isCurrentMonth && onCurrentMonth != null) {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)

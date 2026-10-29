@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.dp
  */
 fun Modifier.glassEffect(
     shape: Shape = RoundedCornerShape(18.dp),
-    backgroundColor: Color = Color(0xFF131B2A).copy(alpha = 0.72f),
-    borderColor: Color = Color.White.copy(alpha = 0.12f),
+    backgroundColor: Color = if (ThemeManager.isDark) Color(0xFF131B2A).copy(alpha = 0.72f) else Color(0xFFFFFFFF).copy(alpha = 0.90f),
+    borderColor: Color = if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
     borderWidth: Dp = 1.dp
 ): Modifier = this
     .clip(shape)
@@ -49,7 +49,7 @@ fun Modifier.glassEffect(
         brush = Brush.verticalGradient(
             colors = listOf(
                 backgroundColor,
-                Color(0xFF0D1420).copy(alpha = 0.85f)
+                if (ThemeManager.isDark) Color(0xFF0D1420).copy(alpha = 0.85f) else Color(0xFFF8FAFC).copy(alpha = 0.95f)
             )
         ),
         shape = shape
@@ -59,7 +59,7 @@ fun Modifier.glassEffect(
         brush = Brush.linearGradient(
             colors = listOf(
                 borderColor,
-                Color.White.copy(alpha = 0.02f),
+                if (ThemeManager.isDark) Color.White.copy(alpha = 0.02f) else Color.Black.copy(alpha = 0.02f),
                 borderColor.copy(alpha = 0.06f)
             )
         ),
@@ -75,6 +75,23 @@ fun Modifier.glassEffect(
 fun AmbientGlowBackdrop(
     modifier: Modifier = Modifier
 ) {
+    if (!ThemeManager.isDark) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFF8FAFC),
+                            Color(0xFFF1F5F9),
+                            Color(0xFFE2E8F0)
+                        )
+                    )
+                )
+        )
+        return
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         // Cyan ambient light orb (top-left)
         Box(

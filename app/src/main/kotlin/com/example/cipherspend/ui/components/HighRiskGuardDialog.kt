@@ -55,6 +55,7 @@ import com.example.cipherspend.ui.theme.PurpleGlow
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 
 @Composable
@@ -98,8 +99,8 @@ fun HighRiskGuardDialog(
                 .fillMaxWidth(0.92f)
                 .glassEffect(
                     shape = RoundedCornerShape(26.dp),
-                    backgroundColor = Color(0xFF0F1726).copy(alpha = 0.96f),
-                    borderColor = PurpleGlow.copy(alpha = 0.35f),
+                    backgroundColor = if (ThemeManager.isDark) Color(0xFF0F1726).copy(alpha = 0.96f) else Color.White.copy(alpha = 0.98f),
+                    borderColor = PurpleGlow.copy(alpha = if (ThemeManager.isDark) 0.35f else 0.25f),
                     borderWidth = 1.5.dp
                 )
                 .padding(24.dp)
@@ -186,14 +187,14 @@ fun HighRiskGuardDialog(
                                         .weight(1f)
                                         .height(56.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color(0xFF131D31).copy(alpha = 0.8f))
+                                        .background(if (ThemeManager.isDark) Color(0xFF131D31).copy(alpha = 0.8f) else Color(0xFFF3F4F6))
                                         .border(
                                             width = if (isFocused) 1.5.dp else 1.dp,
                                             color = when {
                                                 errorMessage != null -> DangerRed
                                                 isFocused -> PurpleGlow
                                                 char.isNotEmpty() -> CyberCyan
-                                                else -> Color.White.copy(alpha = 0.12f)
+                                                else -> if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.12f)
                                             },
                                             shape = RoundedCornerShape(12.dp)
                                         ),

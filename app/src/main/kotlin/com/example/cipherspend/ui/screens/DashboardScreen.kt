@@ -25,6 +25,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Shield
@@ -73,9 +76,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
@@ -85,16 +91,19 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.cipherspend.data.model.TransactionEntity
 import com.example.cipherspend.service.SmsSyncManager
+import com.example.cipherspend.service.getSalaryCycleBounds
 import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.components.MonthSelector
 import com.example.cipherspend.ui.components.getCategoryColor
 import com.example.cipherspend.ui.theme.AmberGlow
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 import kotlinx.coroutines.delay
@@ -260,17 +269,25 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                ) {
                     Text(
                         text = "100% Offline Vault",
-                        style = MaterialTheme.typography.bodySmall.copy(color = CyberCyan, fontWeight = FontWeight.SemiBold)
+                        style = MaterialTheme.typography.bodySmall.copy(color = CyberCyan, fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "Transactions",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Row(
@@ -290,7 +307,7 @@ fun DashboardScreen(
                         )
                         Box(
                             modifier = Modifier
-                                .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                                .glassEffect(shape = CircleShape, backgroundColor = CardSurface)
                                 .clickable {
                                     coroutineScope.launch {
                                         SmsSyncManager.syncInbox(context, fullRescan = true)
@@ -315,7 +332,7 @@ fun DashboardScreen(
                     }
                     Box(
                         modifier = Modifier
-                            .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                            .glassEffect(shape = CircleShape, backgroundColor = CardSurface)
                             .clickable { onNavigateToNotifications() }
                             .padding(10.dp)
                     ) {
@@ -323,18 +340,6 @@ fun DashboardScreen(
                             imageVector = Icons.Default.Notifications,
                             contentDescription = "Notifications",
                             tint = if (notifications.isNotEmpty()) CyberCyan else TextSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
-                            .padding(10.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = "Encrypted",
-                            tint = NeonEmerald,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -362,8 +367,8 @@ fun DashboardScreen(
                         .fillMaxWidth()
                         .glassEffect(
                             shape = RoundedCornerShape(16.dp),
-                            backgroundColor = Color(0xFF2A1C0A),
-                            borderColor = AmberGlow.copy(alpha = 0.6f)
+                            backgroundColor = if (ThemeManager.isDark) Color(0xFF2A1C0A) else Color(0xFFFFFBEB),
+                            borderColor = AmberGlow.copy(alpha = if (ThemeManager.isDark) 0.6f else 0.4f)
                         )
                         .border(1.dp, AmberGlow.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
                         .padding(16.dp)
@@ -386,7 +391,7 @@ fun DashboardScreen(
                             )
                         }
                         Text(
-                            text = "Showing sample transactions so you can explore Analytics, Search, and Receipts.",
+                            text = "Showing sample transactions so you can explore Analytics, Search, Receipts, and Dark / Light themes.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = TextPrimary.copy(alpha = 0.9f),
                                 lineHeight = 18.sp
@@ -404,15 +409,19 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(40.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = AmberGlow)
                             ) {
                                 Text(
                                     text = "Connect Real SMS",
-                                    style = MaterialTheme.typography.labelLarge.copy(
+                                    style = MaterialTheme.typography.labelMedium.copy(
                                         color = Color.Black,
                                         fontWeight = FontWeight.Bold
-                                    )
+                                    ),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             OutlinedButton(
@@ -423,18 +432,56 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(40.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, AmberGlow.copy(alpha = 0.6f)),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = AmberGlow)
                             ) {
                                 Text(
                                     text = "Exit Demo",
-                                    style = MaterialTheme.typography.labelLarge.copy(
+                                    style = MaterialTheme.typography.labelMedium.copy(
                                         color = AmberGlow,
                                         fontWeight = FontWeight.SemiBold
-                                    )
+                                    ),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
+                        }
+
+                        // Demo Theme Mode Switcher
+                        OutlinedButton(
+                            onClick = {
+                                ThemeManager.toggle(context)
+                                CipherSnackbarManager.showMessage(
+                                    if (ThemeManager.isDark) "Switched to Dark Mode" else "Switched to Light Mode"
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(38.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.6f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyberCyan)
+                        ) {
+                            Icon(
+                                imageVector = if (ThemeManager.isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = "Toggle Theme",
+                                tint = CyberCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (ThemeManager.isDark) "Preview Light Theme" else "Preview Dark Theme",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = CyberCyan,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -510,7 +557,9 @@ fun DashboardScreen(
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 32.sp
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -552,15 +601,16 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    val currentYm = YearMonth.now()
-                    val daysLeftInMonth = if (selectedMonth == currentYm) {
-                        (selectedMonth.lengthOfMonth() - LocalDate.now().dayOfMonth + 1).coerceAtLeast(1)
-                    } else if (selectedMonth.isAfter(currentYm)) {
-                        selectedMonth.lengthOfMonth()
-                    } else {
-                        1
+                    val cycleDay = prefs.getInt("salary_cycle_day", 1)
+                    val (cycleStart, cycleEnd) = getSalaryCycleBounds(selectedMonth, cycleDay)
+                    val nowMs = System.currentTimeMillis()
+                    val totalCycleDays = ((cycleEnd - cycleStart) / 86_400_000L).toInt().coerceAtLeast(1)
+                    val daysLeftInCycle = when {
+                        nowMs < cycleStart -> totalCycleDays
+                        nowMs >= cycleEnd -> 1
+                        else -> (((cycleEnd - nowMs) / 86_400_000L).toInt() + 1).coerceIn(1, totalCycleDays)
                     }
-                    val safePerDay = (budget - totalSpent).coerceAtLeast(0.0) / daysLeftInMonth.coerceAtLeast(1)
+                    val safePerDay = (budget - totalSpent).coerceAtLeast(0.0) / daysLeftInCycle
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -570,7 +620,7 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = CardSurface)
                                 .padding(vertical = 12.dp, horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -578,7 +628,8 @@ fun DashboardScreen(
                                 Text(
                                     text = "Safe/Day",
                                     style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 11.sp),
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(3.dp))
                                 Text(
@@ -588,7 +639,8 @@ fun DashboardScreen(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     ),
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -597,7 +649,7 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = CardSurface)
                                 .padding(vertical = 12.dp, horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -605,7 +657,8 @@ fun DashboardScreen(
                                 Text(
                                     text = "Avg Burn",
                                     style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 11.sp),
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(3.dp))
                                 Text(
@@ -615,7 +668,8 @@ fun DashboardScreen(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     ),
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -624,7 +678,7 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF131B2A))
+                                .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = CardSurface)
                                 .padding(vertical = 12.dp, horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -632,7 +686,8 @@ fun DashboardScreen(
                                 Text(
                                     text = "Top Spend",
                                     style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 11.sp),
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(3.dp))
                                 Text(
@@ -659,7 +714,7 @@ fun DashboardScreen(
                         .fillMaxWidth()
                         .glassEffect(
                             shape = RoundedCornerShape(18.dp),
-                            backgroundColor = Color(0xFF0F1E33),
+                            backgroundColor = CardSurface,
                             borderColor = CyberCyan.copy(alpha = 0.35f)
                         )
                         .padding(18.dp)
@@ -936,7 +991,7 @@ fun DashboardScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(110.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 
@@ -1035,7 +1090,7 @@ fun ProminentDisclosureDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = Color(0xFF0F1E33))
+                        .glassEffect(shape = RoundedCornerShape(12.dp), backgroundColor = CardSurface.copy(alpha = 0.5f))
                         .padding(12.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1083,7 +1138,7 @@ fun ProminentDisclosureDialog(
                 )
             }
         },
-        containerColor = Color(0xFF131B2A),
+        containerColor = CardSurface,
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
     )
@@ -1125,7 +1180,7 @@ fun TransactionRowItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = transaction.merchant.take(1).uppercase(),
+                        text = transaction.merchant.trim().take(1).uppercase().ifEmpty { "₹" },
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = catColor,
                             fontWeight = FontWeight.Bold,
@@ -1136,7 +1191,7 @@ fun TransactionRowItem(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = transaction.merchant,
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -1147,33 +1202,39 @@ fun TransactionRowItem(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = transaction.category,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = catColor,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                        Text(
-                            text = " • $formattedDate",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextMuted,
-                                fontSize = 11.sp
-                            )
-                        )
+                    val subtitle = remember(transaction.category, formattedDate, catColor) {
+                        buildAnnotatedString {
+                            withStyle(SpanStyle(color = catColor, fontWeight = FontWeight.Medium)) {
+                                append(transaction.category)
+                            }
+                            withStyle(SpanStyle(color = TextMuted)) {
+                                append(" • $formattedDate")
+                            }
+                        }
                     }
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
                 Text(
                     text = "₹${"%,.2f".format(transaction.amount)}",
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold
-                    )
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 val isRealSender = transaction.sender.isNotBlank() &&
@@ -1201,7 +1262,9 @@ fun TransactionRowItem(
                             color = if (isRealSender) CyberCyan else TextMuted,
                             fontSize = 10.sp,
                             fontWeight = if (isRealSender) FontWeight.Medium else FontWeight.Normal
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

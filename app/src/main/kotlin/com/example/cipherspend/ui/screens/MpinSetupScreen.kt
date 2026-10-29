@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -49,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -164,6 +167,8 @@ fun MpinSetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState),
@@ -173,7 +178,7 @@ fun MpinSetupScreen(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .padding(top = 48.dp)
+                    .padding(top = 24.dp)
                     .graphicsLayer {
                         alpha = headerAlpha
                         translationY = headerOffsetY * density
@@ -183,7 +188,7 @@ fun MpinSetupScreen(
                 Box(
                     modifier = Modifier
                         .size(80.dp)
-                        .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A)),
+                        .glassEffect(shape = CircleShape, backgroundColor = CardSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -359,7 +364,7 @@ fun MpinSetupScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(56.dp)
+                                    .height(52.dp)
                                     .glassEffect(shape = RoundedCornerShape(14.dp))
                                     .clickable { handleDigitPress(digit) },
                                 contentAlignment = Alignment.Center
@@ -385,6 +390,7 @@ fun MpinSetupScreen(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

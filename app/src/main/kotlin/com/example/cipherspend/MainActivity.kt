@@ -35,6 +35,7 @@ import com.example.cipherspend.ui.screens.StartupScreen
 import com.example.cipherspend.ui.screens.TransactionDetailScreen
 import com.example.cipherspend.ui.screens.UnlockScreen
 import com.example.cipherspend.ui.theme.CipherSpendTheme
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 
@@ -46,6 +47,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ThemeManager.init(this)
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE

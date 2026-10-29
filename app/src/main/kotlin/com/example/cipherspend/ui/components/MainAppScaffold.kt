@@ -56,6 +56,7 @@ import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.SurfaceDark
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.bounceClick
 import com.example.cipherspend.ui.theme.glassEffect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -94,15 +95,15 @@ fun MainAppScaffold(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .glassEffect(
                             shape = RoundedCornerShape(26.dp),
-                            backgroundColor = Color(0xFF0F1726).copy(alpha = 0.92f),
-                            borderColor = Color.White.copy(alpha = 0.15f)
+                            backgroundColor = if (ThemeManager.isDark) Color(0xFF0F1726).copy(alpha = 0.92f) else Color(0xFFFFFFFF).copy(alpha = 0.95f),
+                            borderColor = if (ThemeManager.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.10f)
                         )
                         .height(68.dp)
                         .padding(horizontal = 8.dp),
@@ -209,6 +210,7 @@ fun MainAppScaffold(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .statusBarsPadding()
+                .padding(top = 10.dp, bottom = 8.dp)
         ) {
             AmbientGlowBackdrop()
 

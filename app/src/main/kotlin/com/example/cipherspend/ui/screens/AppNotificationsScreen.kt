@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -51,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.example.cipherspend.data.model.AppNotificationEntity
 import com.example.cipherspend.ui.theme.AmberGlow
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -73,7 +76,10 @@ fun AppNotificationsScreen(
     val notifications by viewModel.notifications.collectAsState()
 
     Scaffold(
-        containerColor = DarkBackground
+        containerColor = DarkBackground,
+        modifier = Modifier
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -86,6 +92,7 @@ fun AppNotificationsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
+                    .padding(top = 10.dp, bottom = 12.dp)
             ) {
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -99,7 +106,7 @@ fun AppNotificationsScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                                .glassEffect(shape = CircleShape, backgroundColor = CardSurface)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, color = CyberCyan)
@@ -139,7 +146,7 @@ fun AppNotificationsScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A))
+                                .glassEffect(shape = CircleShape, backgroundColor = CardSurface)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = true, color = DangerRed)
@@ -293,7 +300,7 @@ private fun NotificationCard(item: AppNotificationEntity) {
             .fillMaxWidth()
             .glassEffect(
                 shape = RoundedCornerShape(18.dp),
-                backgroundColor = Color(0xFF131B2A).copy(alpha = 0.9f),
+                backgroundColor = CardSurface.copy(alpha = 0.9f),
                 borderColor = accentColor.copy(alpha = 0.45f)
             )
             .padding(16.dp)

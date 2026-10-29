@@ -46,8 +46,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Shield
@@ -90,6 +92,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.ui.components.HighRiskGuardDialog
+import com.example.cipherspend.ui.theme.AmberGlow
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.NeonEmerald
@@ -98,6 +103,7 @@ import com.example.cipherspend.ui.theme.SurfaceDark
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
@@ -125,6 +131,12 @@ fun SettingsScreen(
     var showMpinGuardForPurge by remember { mutableStateOf(false) }
 
     var budgetInput by remember { mutableStateOf((forecast?.budget ?: 25000.0).toInt().toString()) }
+
+    LaunchedEffect(showBudgetDialog, forecast?.budget) {
+        if (showBudgetDialog) {
+            budgetInput = (forecast?.budget ?: prefs.getFloat("monthly_budget", 25000f).toDouble()).toInt().toString()
+        }
+    }
 
     var autoDropDuplicates by remember {
         mutableStateOf(
@@ -266,6 +278,160 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold
                     )
                 )
+            }
+        }
+
+        // Section: Appearance & Theme
+        item {
+            Text(
+                text = "Appearance & Theme",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+        }
+
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(shape = RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f).padding(end = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (ThemeManager.isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                contentDescription = "Theme",
+                                tint = if (ThemeManager.isDark) CyberCyan else AmberGlow,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = if (ThemeManager.isDark) "Dark Theme" else "Light Theme",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = TextPrimary,
+                                        fontSize = 15.sp
+                                    )
+                                )
+                                Text(
+                                    text = if (ThemeManager.isDark) "Deep cyber AMOLED dark" else "Clean modern light mode",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = ThemeManager.isDark,
+                            onCheckedChange = { isDark ->
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                ThemeManager.setDarkMode(context, isDark)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = CyberCyan,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = SurfaceDark
+                            )
+                        )
+                    }
+
+                    // Theme selector buttons (Dark / Light quick pill selectors)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Dark pill
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (ThemeManager.isDark) CyberCyan.copy(alpha = 0.15f) else CardSurface
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (ThemeManager.isDark) CyberCyan else CardBorder,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    ThemeManager.setDarkMode(context, true)
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DarkMode,
+                                    contentDescription = null,
+                                    tint = if (ThemeManager.isDark) CyberCyan else TextMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Dark Mode",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = if (ThemeManager.isDark) CyberCyan else TextMuted,
+                                        fontWeight = if (ThemeManager.isDark) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                )
+                            }
+                        }
+
+                        // Light pill
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (!ThemeManager.isDark) CyberCyan.copy(alpha = 0.15f) else CardSurface
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (!ThemeManager.isDark) CyberCyan else CardBorder,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    ThemeManager.setDarkMode(context, false)
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LightMode,
+                                    contentDescription = null,
+                                    tint = if (!ThemeManager.isDark) CyberCyan else TextMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Light Mode",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = if (!ThemeManager.isDark) CyberCyan else TextMuted,
+                                        fontWeight = if (!ThemeManager.isDark) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -761,7 +927,7 @@ fun SettingsScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(110.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 
@@ -781,7 +947,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = budgetInput,
-                        onValueChange = { budgetInput = it },
+                        onValueChange = { budgetInput = it.filter { ch -> ch.isDigit() || ch == '.' } },
                         label = { Text("Budget (₹)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -801,6 +967,7 @@ fun SettingsScreen(
                         transactionViewModel.setMonthlyBudget(amount)
                         showBudgetDialog = false
                     },
+                    enabled = (budgetInput.toFloatOrNull() ?: 0f) > 0f,
                     colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                 ) {
                     Text("Save", color = Color.Black)
@@ -811,7 +978,7 @@ fun SettingsScreen(
                     Text("Cancel", color = TextSecondary)
                 }
             },
-            containerColor = Color(0xFF131B2A)
+            containerColor = CardSurface
         )
     }
 
@@ -842,7 +1009,7 @@ fun SettingsScreen(
                     Text("Cancel", color = TextSecondary)
                 }
             },
-            containerColor = Color(0xFF131B2A)
+            containerColor = CardSurface
         )
     }
 
@@ -994,7 +1161,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = Color(0xFF131B2A),
+            containerColor = CardSurface,
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
         )

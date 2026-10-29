@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -81,6 +82,8 @@ import androidx.compose.ui.unit.sp
 import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.components.HighRiskGuardDialog
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -89,6 +92,7 @@ import com.example.cipherspend.ui.theme.PurpleGlow
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.AuthViewModel
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
@@ -260,6 +264,7 @@ fun ProfileEditScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .navigationBarsPadding()
                     .imePadding()
                     .padding(horizontal = 20.dp)
                     .verticalScroll(scrollState),
@@ -292,7 +297,7 @@ fun ProfileEditScreen(
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
                             contentDescription = "Change Avatar",
-                            tint = Color.Black,
+                            tint = if (ThemeManager.isDark) Color.Black else Color.White,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -334,7 +339,11 @@ fun ProfileEditScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = CyberCyan,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedBorderColor = CardBorder,
+                                focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = CardSurface.copy(alpha = 0.4f),
+                                focusedLabelColor = CyberCyan,
+                                unfocusedLabelColor = TextMuted,
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary
                             )
@@ -356,7 +365,11 @@ fun ProfileEditScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = NeonEmerald,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedBorderColor = CardBorder,
+                                focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = CardSurface.copy(alpha = 0.4f),
+                                focusedLabelColor = NeonEmerald,
+                                unfocusedLabelColor = TextMuted,
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary
                             )
@@ -378,7 +391,11 @@ fun ProfileEditScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = CyberCyan,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedBorderColor = CardBorder,
+                                focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = CardSurface.copy(alpha = 0.4f),
+                                focusedLabelColor = CyberCyan,
+                                unfocusedLabelColor = TextMuted,
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary
                             )
@@ -413,8 +430,8 @@ fun ProfileEditScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color.White.copy(alpha = 0.04f))
-                                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
+                                .background(if (ThemeManager.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f))
+                                .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
                                 .clickable { showTotpGuardForMpin = true }
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -425,7 +442,7 @@ fun ProfileEditScreen(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(PurpleGlow.copy(alpha = 0.18f)),
+                                        .background(PurpleGlow.copy(alpha = if (ThemeManager.isDark) 0.18f else 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -466,11 +483,11 @@ fun ProfileEditScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
-                        .shadow(12.dp, RoundedCornerShape(16.dp), spotColor = CyberCyan.copy(alpha = 0.4f)),
+                        .shadow(12.dp, RoundedCornerShape(16.dp), spotColor = CyberCyan.copy(alpha = if (ThemeManager.isDark) 0.4f else 0.2f)),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CyberCyan,
-                        contentColor = Color.Black
+                        contentColor = if (ThemeManager.isDark) Color.Black else Color.White
                     )
                 ) {
                     Text(
@@ -493,7 +510,7 @@ fun ProfileEditScreen(
         ModalBottomSheet(
             onDismissRequest = { showAvatarSheet = false },
             sheetState = sheetState,
-            containerColor = Color(0xFF0F1726)
+            containerColor = CardSurface
         ) {
             Column(
                 modifier = Modifier
@@ -522,7 +539,7 @@ fun ProfileEditScreen(
                                 .clip(CircleShape)
                                 .border(
                                     width = if (isSelected) 3.dp else 1.dp,
-                                    color = if (isSelected) CyberCyan else Color.White.copy(alpha = 0.15f),
+                                    color = if (isSelected) CyberCyan else CardBorder,
                                     shape = CircleShape
                                 )
                                 .clickable {
@@ -548,7 +565,7 @@ fun ProfileEditScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PurpleGlow.copy(alpha = 0.25f),
+                        containerColor = PurpleGlow.copy(alpha = if (ThemeManager.isDark) 0.25f else 0.12f),
                         contentColor = PurpleGlow
                     )
                 ) {
@@ -557,7 +574,7 @@ fun ProfileEditScreen(
                     Text("PICK FROM GALLERY", fontWeight = FontWeight.Bold)
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
@@ -609,6 +626,11 @@ fun ProfileEditScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = CyberCyan,
+                            unfocusedBorderColor = CardBorder,
+                            focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                            unfocusedContainerColor = CardSurface.copy(alpha = 0.4f),
+                            focusedLabelColor = CyberCyan,
+                            unfocusedLabelColor = TextMuted,
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary
                         ),
@@ -627,6 +649,11 @@ fun ProfileEditScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = CyberCyan,
+                            unfocusedBorderColor = CardBorder,
+                            focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                            unfocusedContainerColor = CardSurface.copy(alpha = 0.4f),
+                            focusedLabelColor = CyberCyan,
+                            unfocusedLabelColor = TextMuted,
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary
                         ),
@@ -662,7 +689,7 @@ fun ProfileEditScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                 ) {
-                    Text("Update MPIN", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Update MPIN", color = if (ThemeManager.isDark) Color.Black else Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -670,7 +697,7 @@ fun ProfileEditScreen(
                     Text("Cancel", color = TextSecondary)
                 }
             },
-            containerColor = Color(0xFF131B2A)
+            containerColor = CardSurface
         )
     }
 }
@@ -726,7 +753,7 @@ fun AvatarDisplay(
         Box(
             modifier = modifier
                 .clip(CircleShape)
-                .background(Color(0xFF131B2A)),
+                .background(CardSurface),
             contentAlignment = Alignment.Center
         ) {
             Icon(

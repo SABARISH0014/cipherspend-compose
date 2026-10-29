@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,17 +36,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.data.dao.CategorySpend
 import com.example.cipherspend.ui.components.MonthSelector
 import com.example.cipherspend.ui.components.SankeyChart
 import com.example.cipherspend.ui.components.getCategoryColor
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.TextMuted
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
+import com.example.cipherspend.ui.theme.ThemeManager
 import com.example.cipherspend.ui.theme.glassEffect
 import com.example.cipherspend.ui.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
@@ -63,7 +68,8 @@ fun AnalyticsScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     val categorySpends = remember(transactions) {
-        transactions.groupBy { it.category }
+        transactions.filter { !it.category.equals("Refund", ignoreCase = true) }
+            .groupBy { it.category }
             .map { (cat, list) -> CategorySpend(cat, list.sumOf { it.amount }) }
             .sortedByDescending { it.total }
     }
@@ -204,7 +210,9 @@ fun AnalyticsScreen(
                     Column {
                         Text(
                             text = "Projected Month-End",
-                            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -212,7 +220,9 @@ fun AnalyticsScreen(
                             style = MaterialTheme.typography.titleLarge.copy(
                                 color = CyberCyan,
                                 fontWeight = FontWeight.Bold
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -226,7 +236,9 @@ fun AnalyticsScreen(
                     Column {
                         Text(
                             text = "Daily Spend Velocity",
-                            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -234,7 +246,9 @@ fun AnalyticsScreen(
                             style = MaterialTheme.typography.titleLarge.copy(
                                 color = NeonEmerald,
                                 fontWeight = FontWeight.Bold
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -270,14 +284,23 @@ fun AnalyticsScreen(
                 }
                 val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
 
+                val itemBg = if (ThemeManager.isDark) {
+                    if (isSelected) Color(0xFF1E2B40) else Color(0xFF172234)
+                } else {
+                    if (isSelected) catColor.copy(alpha = 0.14f) else Color.White
+                }
+                val itemBorder = if (isSelected) {
+                    catColor.copy(alpha = 0.90f)
+                } else {
+                    if (ThemeManager.isDark) catColor.copy(alpha = 0.35f) else catColor.copy(alpha = 0.28f)
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassEffect(
-                            shape = RoundedCornerShape(16.dp),
-                            backgroundColor = if (isSelected) Color(0xFF131F33) else Color(0xFF0F1726),
-                            borderColor = if (isSelected) catColor.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.08f)
-                        )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(itemBg)
+                        .border(1.dp, itemBorder, RoundedCornerShape(16.dp))
                         .clickable {
                             selectedCategory = if (selectedCategory == cat.category) null else cat.category
                         }
@@ -289,7 +312,12 @@ fun AnalyticsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .size(14.dp)
@@ -302,7 +330,9 @@ fun AnalyticsScreen(
                                         color = TextPrimary,
                                         fontSize = 14.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
 
@@ -334,7 +364,7 @@ fun AnalyticsScreen(
                                 .height(5.dp)
                                 .clip(RoundedCornerShape(3.dp)),
                             color = catColor,
-                            trackColor = Color.White.copy(alpha = 0.08f)
+                            trackColor = if (ThemeManager.isDark) Color.White.copy(alpha = 0.12f) else catColor.copy(alpha = 0.15f)
                         )
 
                         AnimatedVisibility(
@@ -363,7 +393,14 @@ fun AnalyticsScreen(
                                                 modifier = Modifier
                                                     .weight(1f)
                                                     .clip(RoundedCornerShape(8.dp))
-                                                    .background(Color.White.copy(alpha = 0.05f))
+                                                    .background(
+                                                        if (ThemeManager.isDark) catColor.copy(alpha = 0.15f) else catColor.copy(alpha = 0.08f)
+                                                    )
+                                                    .border(
+                                                        1.dp,
+                                                        catColor.copy(alpha = if (ThemeManager.isDark) 0.35f else 0.25f),
+                                                        RoundedCornerShape(8.dp)
+                                                    )
                                                     .padding(horizontal = 8.dp, vertical = 6.dp)
                                             ) {
                                                 Column {
@@ -380,7 +417,8 @@ fun AnalyticsScreen(
                                                         text = "₹${"%,.0f".format(total)}",
                                                         style = MaterialTheme.typography.bodySmall.copy(
                                                             color = catColor,
-                                                            fontSize = 11.sp
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.SemiBold
                                                         )
                                                     )
                                                 }
@@ -406,7 +444,14 @@ fun AnalyticsScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .background(Color.White.copy(alpha = 0.03f))
+                                                .background(
+                                                    if (ThemeManager.isDark) Color(0xFF1E2C42) else Color(0xFFF8FAFC)
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (ThemeManager.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f),
+                                                    RoundedCornerShape(8.dp)
+                                                )
                                                 .clickable { onNavigateToDetail(tx.id) }
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -449,7 +494,7 @@ fun AnalyticsScreen(
 
         // Bottom clearance
         item {
-            Spacer(modifier = Modifier.height(110.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 }

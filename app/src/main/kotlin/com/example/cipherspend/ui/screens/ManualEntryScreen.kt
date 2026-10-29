@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -63,6 +64,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cipherspend.ui.components.CipherSnackbarManager
 import com.example.cipherspend.ui.theme.AmbientGlowBackdrop
+import com.example.cipherspend.ui.theme.CardBorder
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -157,8 +160,10 @@ fun ManualEntryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .navigationBarsPadding()
                     .imePadding()
                     .padding(horizontal = 20.dp)
+                    .padding(top = 8.dp, bottom = 16.dp)
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -199,8 +204,8 @@ fun ManualEntryScreen(
                                     unfocusedLabelColor = TextSecondary,
                                     focusedTextColor = TextPrimary,
                                     unfocusedTextColor = TextPrimary,
-                                    focusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.6f),
-                                    unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.4f)
+                                    focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                    unfocusedContainerColor = CardSurface.copy(alpha = 0.4f)
                                 )
                             )
 
@@ -235,8 +240,8 @@ fun ManualEntryScreen(
                                     unfocusedLabelColor = TextSecondary,
                                     focusedTextColor = TextPrimary,
                                     unfocusedTextColor = TextPrimary,
-                                    focusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.6f),
-                                    unfocusedContainerColor = Color(0xFF131B2A).copy(alpha = 0.4f)
+                                    focusedContainerColor = CardSurface.copy(alpha = 0.6f),
+                                    unfocusedContainerColor = CardSurface.copy(alpha = 0.4f)
                                 )
                             )
 
@@ -257,8 +262,8 @@ fun ManualEntryScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(14.dp))
-                                        .background(Color(0xFF131B2A).copy(alpha = 0.6f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
+                                        .background(CardSurface.copy(alpha = 0.6f))
+                                        .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
                                         .clickable { showDatePicker = true }
                                         .padding(horizontal = 16.dp, vertical = 14.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,

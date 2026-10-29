@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cipherspend.ui.theme.CardSurface
 import com.example.cipherspend.ui.theme.CyberCyan
 import com.example.cipherspend.ui.theme.DangerRed
 import com.example.cipherspend.ui.theme.DarkBackground
@@ -45,6 +48,7 @@ import com.example.cipherspend.ui.theme.NeonEmerald
 import com.example.cipherspend.ui.theme.TextPrimary
 import com.example.cipherspend.ui.theme.TextSecondary
 import com.example.cipherspend.ui.theme.glassEffect
+import kotlinx.coroutines.delay
 
 @Composable
 fun UnlockScreen(
@@ -54,7 +58,8 @@ fun UnlockScreen(
     lockoutSeconds: Int = 0
 ) {
     LaunchedEffect(isBiometricAvailable, lockoutSeconds) {
-        if (isBiometricAvailable && lockoutSeconds <= 0) {
+        if (isBiometricAvailable && lockoutSeconds == 0) {
+            delay(200)
             onTriggerBiometric()
         }
     }
@@ -72,6 +77,8 @@ fun UnlockScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -83,7 +90,7 @@ fun UnlockScreen(
                 Box(
                     modifier = Modifier
                         .size(72.dp)
-                        .glassEffect(shape = CircleShape, backgroundColor = Color(0xFF131B2A)),
+                        .glassEffect(shape = CircleShape, backgroundColor = CardSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -247,6 +254,7 @@ fun UnlockScreen(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
